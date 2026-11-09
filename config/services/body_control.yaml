@@ -1,0 +1,51 @@
+# BodyControl SOME/IP service (project.md §7.3). Project-specific definition, not ARXML.
+# All multi-byte fields are network byte order (big-endian).
+
+schema: 1
+service:
+  name: BodyControl
+  id: 0x1100
+  instance: 0x0001
+  major: 1
+  minor: 0
+  unreliable_port: 30511   # UDP, events
+  reliable_port: 30512     # TCP, methods
+
+methods:
+  - {name: SetWindowPosition, id: 0x0001, request_size: 1, response: BodyControlResult}   # 0..100
+  - {name: SetInteriorLight,  id: 0x0002, request_size: 1, response: BodyControlResult}   # 0/1
+
+events:
+  # cycle: practice selection (one LIN major schedule); project.md §7.3 gives no period
+  - {name: BodyStatusChanged, id: 0x8001, eventgroup: 0x0001, cycle_ms: 100, payload: BodyStatusData}
+
+types:
+  BodyControlResult:
+    size: 1
+    fields:
+      - {name: result, offset: 0, type: u8}   # 0 accepted, 1 invalid argument, 2 state rejected, 3 LIN timeout
+    golden: {result: 3}
+  BodyStatusData:
+    size: 20
+    fields:
+      - {name: sequence,        offset: 0,  type: u32}
+      - {name: timestamp_us,    offset: 4,  type: u64}   # Gateway monotonic time of the newest LIN status used
+      - {name: door_bits,       offset: 12, type: u8}    # bit0..3 FL FR RL RR open, bit4 central lock, bit5 child lock
+      - {name: window_position, offset: 13, type: u8}    # 0..100
+      - {name: light_state,     offset: 14, type: u8}    # 0/1
+      - {name: status_flags,    offset: 15, type: u8}    # bit0 window obstruction, bit1 window fault, bit2 light fault,
+                                                         # bit3 door comm error, bit4 window comm error, bit5 light comm error,
+                                                         # bit6 LIN bus asleep, bit7 window moving
+      - {name: freshness,       offset: 16, type: u8}    # bit0 door, bit1 window, bit2 light (1 = fresh)
+      - {name: reserved1,       offset: 17, type: u8,  must_be_zero: true}
+      - {name: reserved2,       offset: 18, type: u16, must_be_zero: true}
+    golden:
+      sequence: 7
+      timestamp_us: 0x0102030405060708
+      door_bits: 0x11
+      window_position: 50
+      light_state: 1
+      status_flags: 0x80
+      freshness: 0x07
+      reserved1: 0
+      reserved2: 0

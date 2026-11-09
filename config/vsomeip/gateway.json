@@ -1,0 +1,53 @@
+{
+	"unicast": "10.10.0.1",
+	"netmask": "255.255.255.0",
+	"network": "vsomeip-sil-gateway",
+	"logging": {
+		"level": "info",
+		"console": "true",
+		"dlt": "false",
+		"version": {
+			"enable": "false"
+		}
+	},
+	"applications": [
+		{
+			"name": "vehicle_gateway",
+			"id": "0x1001"
+		}
+	],
+	"services": [
+		{
+			"service": "0x1000",
+			"instance": "0x0001",
+			"unreliable": "30501",
+			"reliable": {
+				"port": "30502",
+				"enable-magic-cookies": "false"
+			}
+		},
+		{
+			"service": "0x1100",
+			"instance": "0x0001",
+			"unreliable": "30511",
+			"reliable": {
+				"port": "30512",
+				"enable-magic-cookies": "false"
+			}
+		}
+	],
+	"routing": "vehicle_gateway",
+	"service-discovery": {
+		"enable": "true",
+		"multicast": "224.244.224.245",
+		"port": "30490",
+		"protocol": "udp",
+		"initial_delay_min": "10",
+		"initial_delay_max": "100",
+		"repetitions_base_delay": "200",
+		"repetitions_max": "3",
+		"ttl": "3",
+		"cyclic_offer_delay": "1000",
+		"request_response_delay": "1500"
+	}
+}

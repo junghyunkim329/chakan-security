@@ -1,0 +1,91 @@
+# LIN Body Domain definition (project.md §6). Single source for the LIN master (Gateway), slaves and tests.
+# IDs, payloads and schedule follow §6.2. Values marked "practice selection" are not in project.md and are
+# recorded in docs/notion/phase6-lin-body.md (practice configuration hj_*).
+
+schema: 1
+
+bus:
+  name: body_lin
+  bitrate_logical: 19200        # §6.2, logical only: the emulation does not reproduce bit timing
+  tick_ms: 10                   # §6.2 schedule tick
+  response_window_ms: 5         # practice selection: master waits this long for a slave response
+  missed_limit: 3               # §6.2 / §6.3 consecutive missing responses -> communication error
+  recovery_count: 3             # §6.3 consecutive checksum-valid responses -> normal
+  sleep_after_ms: 5000          # §6.2 no command and no status change for 5 s -> sleep
+  wakeup_delay_ms: 100          # practice selection: LIN 2.x needs >= 100 ms between wakeup and the first header
+  slave_bus_idle_ms: 4000       # practice selection: LIN 2.x slaves treat 4 s bus inactivity as sleep
+
+# LIN frames carried on a dedicated vxcan wire between hj_gw and hj_body (practice selection).
+# Nothing else uses this wire, so the CAN IDs only mark the LIN frame part.
+encapsulation:
+  header_can_id: 0x001          # break + sync + protected identifier: data[0] = PID, DLC 1
+  response_can_id: 0x002        # response: data = payload bytes + checksum byte
+  wakeup_can_id: 0x003          # wakeup signal, DLC 0
+
+nodes: [gateway_master, door, window, light]
+
+frames:
+  - id: 0x10
+    name: Body_DoorStatus
+    publisher: door
+    subscribers: [gateway_master]
+    dlc: 2
+    checksum: enhanced
+    signals:
+      - {name: door_fl,      byte: 0, bit: 0, bits: 1}
+      - {name: door_fr,      byte: 0, bit: 1, bits: 1}
+      - {name: door_rl,      byte: 0, bit: 2, bits: 1}
+      - {name: door_rr,      byte: 0, bit: 3, bits: 1}
+      - {name: central_lock, byte: 1, bit: 0, bits: 1}
+      - {name: child_lock,   byte: 1, bit: 1, bits: 1}
+      - {name: valid,        byte: 1, bit: 7, bits: 1}
+  - id: 0x11
+    name: Body_WindowCommand
+    publisher: gateway_master
+    subscribers: [window]
+    dlc: 2
+    checksum: enhanced
+    signals:
+      - {name: target,  byte: 0, bit: 0, bits: 8, min: 0, max: 100}   # 0 = fully closed, 100 = fully open
+      - {name: execute, byte: 1, bit: 0, bits: 1}
+      - {name: cancel,  byte: 1, bit: 1, bits: 1}
+  - id: 0x12
+    name: Body_WindowStatus
+    publisher: window
+    subscribers: [gateway_master]
+    dlc: 3
+    checksum: enhanced
+    signals:
+      - {name: position,    byte: 0, bit: 0, bits: 8, min: 0, max: 100}
+      - {name: motion,      byte: 1, bit: 0, bits: 8, min: 0, max: 2}   # 0 stopped, 1 opening, 2 closing
+      - {name: obstruction, byte: 2, bit: 0, bits: 1}
+      - {name: fault,       byte: 2, bit: 1, bits: 1}
+      - {name: valid,       byte: 2, bit: 7, bits: 1}
+  - id: 0x13
+    name: Body_LightCommand
+    publisher: gateway_master
+    subscribers: [light]
+    dlc: 2
+    checksum: enhanced
+    signals:
+      - {name: target, byte: 0, bit: 0, bits: 8, min: 0, max: 100}
+      - {name: fade,   byte: 1, bit: 0, bits: 1}
+  - id: 0x14
+    name: Body_LightStatus
+    publisher: light
+    subscribers: [gateway_master]
+    dlc: 2
+    checksum: enhanced
+    signals:
+      - {name: brightness, byte: 0, bit: 0, bits: 8, min: 0, max: 100}
+      - {name: active,     byte: 1, bit: 0, bits: 1}
+      - {name: fault,      byte: 1, bit: 1, bits: 1}
+      - {name: valid,      byte: 1, bit: 7, bits: 1}
+
+# §6.2 100 ms major schedule of 10 ms slots (null = idle / reserved / network management)
+schedule: [0x11, 0x12, 0x13, 0x14, 0x10, 0x11, 0x12, null, null, null]
+
+slave_behaviour:                # §6.3
+  window_step_percent: 5        # per 50 ms response
+  light_fade_step_percent: 10   # per 100 ms when fade is on
+  initial: {doors_open: 0, central_lock: 1, child_lock: 0, window: 0, light: 0}

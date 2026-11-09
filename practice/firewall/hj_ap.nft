@@ -1,0 +1,44 @@
+# hj_ap 방화벽 (연습용)
+# AP는 Gateway에게 서비스를 "요청하는 쪽"이다. 상대는 Gateway(10.10.0.1) 하나뿐.
+# 규칙: 기본은 전부 차단(drop), 아래 적힌 것만 통과(accept).
+
+# 이미 있으면 지우고 새로 만든다 (여러 번 적용해도 결과가 같다)
+table inet hj_fw
+delete table inet hj_fw
+
+table inet hj_fw {
+	# 들어오는 통신
+	chain input {
+		type filter hook input priority filter; policy drop;
+
+		iif "lo" accept                          # 방 안 내선(lo)은 허용
+		ct state established,related accept     # 내가 먼저 건 대화의 답장은 허용
+
+		# SOME/IP-SD: Gateway가 "이런 서비스 있어요" 알림 (UDP 30490)
+		iifname "veth_ap" ip saddr 10.10.0.1 udp sport 30490 udp dport 30490 accept
+		# SOME/IP event: 차량 상태(30501), 차체 상태(30511) 방송
+		iifname "veth_ap" ip saddr 10.10.0.1 udp sport { 30501, 30511 } accept
+		# DoIP: Gateway의 진단 안내/응답 (UDP 13400)
+		iifname "veth_ap" ip saddr 10.10.0.1 udp sport 13400 accept
+	}
+
+	# 나가는 통신
+	chain output {
+		type filter hook output priority filter; policy drop;
+
+		oif "lo" accept
+		ct state established,related accept
+
+		# SOME/IP-SD: "이 서비스 찾아요/구독할게요" (Gateway 또는 SD multicast 주소로)
+		oifname "veth_ap" ip daddr { 10.10.0.1, 224.244.224.245 } udp sport 30490 udp dport 30490 accept
+		# SOME/IP method 요청(30502, 30512)과 DoIP 진단 연결(13400), TCP
+		oifname "veth_ap" ip daddr 10.10.0.1 tcp dport { 30502, 30512, 13400 } accept
+		# DoIP: "진단 가능한 차량 있나요?" (UDP 13400, 개별 또는 방송)
+		oifname "veth_ap" ip daddr { 10.10.0.1, 10.10.0.255, 255.255.255.255 } udp dport 13400 accept
+	}
+
+	# 다른 방으로 대신 전달해 주기: AP는 안 함
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+}

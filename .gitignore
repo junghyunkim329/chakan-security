@@ -1,0 +1,17 @@
+# build outputs (rebuild with CMake)
+/build/
+
+# third-party sources and local installs (recreated by scripts/setup/build-vsomeip.sh, versions pinned there)
+/third_party/
+
+# test runs: keep only summaries and verdicts as evidence (project.md §15.2: captures and raw logs stay out of Git)
+/docs/results/**
+!/docs/results/*/
+!/docs/results/*/summary.md
+!/docs/results/*/verdict.json
+!/docs/results/*/report.json
+!/docs/results/*/deployed-sha256.txt
+
+# Python caches
+__pycache__/
+*.pyc

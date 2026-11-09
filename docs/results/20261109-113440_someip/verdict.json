@@ -1,0 +1,125 @@
+{
+  "pass": true,
+  "criteria": [
+    {
+      "name": "서비스 발견 5초 이내",
+      "pass": true,
+      "value": "61.7 ms"
+    },
+    {
+      "name": "CAN 수신→event 수신 p99 ≤ 50 ms",
+      "pass": true,
+      "value": "p50 12.758 / p99 13.691 / max 14.62 ms"
+    },
+    {
+      "name": "측정 event 수 ≥ 예상의 90%",
+      "pass": true,
+      "value": "1353 / 예상 1350"
+    },
+    {
+      "name": "event 순번 누락 0",
+      "pass": true,
+      "value": "0"
+    },
+    {
+      "name": "잘못된 event 0",
+      "pass": true,
+      "value": "0"
+    },
+    {
+      "name": "워밍업 뒤 validity 전부 1",
+      "pass": true,
+      "value": "예외 0건"
+    },
+    {
+      "name": "워밍업 뒤 freshness 전부 1",
+      "pass": true,
+      "value": "예외 0건"
+    },
+    {
+      "name": "워밍업 뒤 Gateway 상태 Running",
+      "pass": true,
+      "value": "1353 / 1353"
+    },
+    {
+      "name": "CAN 값이 event에 반영 (rpm 800~2500)",
+      "pass": true,
+      "value": "rpm 800~2498"
+    },
+    {
+      "name": "CAN 값이 event에 반영 (속도 60 km/h)",
+      "pass": true,
+      "value": "speed max 60.00 km/h"
+    },
+    {
+      "name": "GetSnapshot 응답 정상",
+      "pass": true,
+      "value": "True"
+    },
+    {
+      "name": "비어 있지 않은 GetSnapshot 요청 거부",
+      "pass": true,
+      "value": "True"
+    },
+    {
+      "name": "Gateway가 거부한 정상 CAN frame 0",
+      "pass": true,
+      "value": "rejected 0, unattributed 0, lost 0"
+    }
+  ],
+  "gateway": {
+    "component": "gateway",
+    "frames_read": 11551,
+    "lost_frames": 0,
+    "unattributed_errors": 0,
+    "events_sent": 1649,
+    "snapshot_requests": 2,
+    "malformed_requests": 1,
+    "final_state": 3,
+    "pdus": [
+      {
+        "id": "0x100",
+        "name": "PT_EngineStatus",
+        "accepted": 3300,
+        "rejected": 0
+      },
+      {
+        "id": "0x110",
+        "name": "PT_VehicleDynamics",
+        "accepted": 1650,
+        "rejected": 0
+      },
+      {
+        "id": "0x180",
+        "name": "CH_BrakeStatus",
+        "accepted": 3300,
+        "rejected": 0
+      },
+      {
+        "id": "0x200",
+        "name": "CH_SteeringStatus",
+        "accepted": 3301,
+        "rejected": 0
+      }
+    ]
+  },
+  "consumer": {
+    "component": "consumer",
+    "discovery_ms": 61.7,
+    "events": 1500,
+    "measured": 1353,
+    "latency_p50_ms": 12.758,
+    "latency_p99_ms": 13.691,
+    "latency_max_ms": 14.62,
+    "sequence_gaps": 0,
+    "malformed_events": 0,
+    "not_fresh_events": 0,
+    "not_valid_events": 0,
+    "running_events": 1353,
+    "rpm_min": 800,
+    "rpm_max": 2498,
+    "speed_max": 6000,
+    "snapshot_ok": true,
+    "malformed_request_rejected": true
+  }
+}

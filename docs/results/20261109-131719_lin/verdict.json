@@ -1,0 +1,215 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "group": "명령·응답",
+      "name": "AP가 BodyControl 서비스 발견",
+      "pass": true,
+      "value": "201 ms"
+    },
+    {
+      "group": "명령·응답",
+      "name": "초기 상태: 문 닫힘·중앙 잠금, 창문 0, 실내등 꺼짐, 모두 fresh",
+      "pass": true,
+      "value": "{'type': 'event', 'seq': 26, 't_us': 1481574724, 'door_bits': 16, 'window': 0, 'light': 0, 'flags': 0, 'fresh': 7}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "SetWindowPosition(50) → accepted(0)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 0, 'rtt_ms': 51.593, 't_us': 1481687734}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "창문이 5%씩 움직여 50 도달 (50 ms마다 5% → 약 0.5 s)",
+      "pass": true,
+      "value": "0.638 s"
+    },
+    {
+      "group": "명령·응답",
+      "name": "event에서 창문 위치가 증가만 함 (100 ms event 사이 최대 10%)",
+      "pass": true,
+      "value": "[10, 10, 10, 10, 10]"
+    },
+    {
+      "group": "명령·응답",
+      "name": "SetInteriorLight(1) → accepted(0), 실내등 켜짐",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 2, 'return_code': 0, 'code': 0, 'rtt_ms': 122.455, 't_us': 1482406767}, 0.19 s"
+    },
+    {
+      "group": "명령·응답",
+      "name": "Door ECU 입력(앞좌 문 열림)이 event에 반영",
+      "pass": true,
+      "value": "0.092 s"
+    },
+    {
+      "group": "명령·응답",
+      "name": "잘못된 인자 (범위 밖 101) → invalid argument(1)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 1, 'rtt_ms': 11.843, 't_us': 1482588397}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "잘못된 인자 (payload 2 byte) → invalid argument(1)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 1, 'rtt_ms': 11.403, 't_us': 1482608806}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "잘못된 인자 (실내등 2) → invalid argument(1)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 2, 'return_code': 0, 'code': 1, 'rtt_ms': 11.656, 't_us': 1482629999}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "장애물 주입: 창문 정지·obstruction·fault 표시",
+      "pass": true,
+      "value": "{'type': 'event', 'seq': 42, 't_us': 1483173537, 'door_bits': 16, 'window': 50, 'light': 1, 'flags': 3, 'fresh': 7}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "초당 5회 초과 요청 거부 (state rejected 2)",
+      "pass": true,
+      "value": "[2, 2, 0, 0, 0, 0, 0]"
+    },
+    {
+      "group": "명령·응답",
+      "name": "엔진 메시지 없음(점화 정보 stale) → 창문 명령 거부(2)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 2, 'rtt_ms': 11.959, 't_us': 1486110691}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "같은 상황에서 실내등 명령은 허용(0)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 2, 'return_code': 0, 'code': 0, 'rtt_ms': 86.689, 't_us': 1486207273}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "엔진 재개 후 창문 명령 허용(0)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 0, 'rtt_ms': 23.678, 't_us': 1486737429}"
+    },
+    {
+      "group": "응답 누락",
+      "name": "Window 응답 중단 → 3회 누락 후 통신 오류·not fresh 표시",
+      "pass": true,
+      "value": "0.229 s, {'type': 'event', 'seq': 92, 't_us': 1488174288, 'door_bits': 16, 'window': 10, 'light': 0, 'flags': 16, 'fresh': 5}"
+    },
+    {
+      "group": "응답 누락",
+      "name": "통신 오류 중 창문 명령 → LIN timeout(3)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 3, 'rtt_ms': 11.07, 't_us': 1488186925}"
+    },
+    {
+      "group": "응답 누락",
+      "name": "다른 Slave(Door·Light)는 정상 유지",
+      "pass": true,
+      "value": "{'type': 'event', 'seq': 92, 't_us': 1488174288, 'door_bits': 16, 'window': 10, 'light': 0, 'flags': 16, 'fresh': 5}"
+    },
+    {
+      "group": "응답 누락",
+      "name": "Light checksum 오류 응답 → 3회 후 통신 오류",
+      "pass": true,
+      "value": "0.278 s"
+    },
+    {
+      "group": "복구",
+      "name": "Window 응답 재개 → 정상 3회 후 복구·fresh",
+      "pass": true,
+      "value": "0.197 s"
+    },
+    {
+      "group": "복구",
+      "name": "복구 후 창문 명령 accepted(0)·동작",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 0, 'rtt_ms': 61.348, 't_us': 1488736960}"
+    },
+    {
+      "group": "복구",
+      "name": "Light checksum 정상화 → 복구",
+      "pass": true,
+      "value": "0.291 s"
+    },
+    {
+      "group": "복구",
+      "name": "복구 후 실내등 명령 accepted(0)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 2, 'return_code': 0, 'code': 0, 'rtt_ms': 31.779, 't_us': 1489207293}"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "5초간 명령·상태 변화 없음 → LIN sleep",
+      "pass": true,
+      "value": "4.24 s"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "sleep 중 명령 → wakeup 후 accepted(0)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 0, 'rtt_ms': 123.175, 't_us': 1496399052}"
+    },
+    {
+      "group": "명령·응답",
+      "name": "허용 목록에 없는 client ID 0x2FFF → 거부(2)",
+      "pass": true,
+      "value": "{'type': 'response', 'method': 1, 'return_code': 0, 'code': 2, 'rtt_ms': 10.787, 't_us': 1499798157}"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "모든 header의 PID parity가 표준 표와 일치 (주입한 1건 제외)",
+      "pass": true,
+      "value": "1412 headers"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "스케줄 순서 0x11→0x12→0x13→0x14→0x10→0x11→0x12 반복",
+      "pass": true,
+      "value": "['0x11', '0x92', '0xd3', '0x14', '0x50', '0x11', '0x92', '0x11']"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "slot 간격 10 ms (±3), idle 구간 40 ms (±3)",
+      "pass": true,
+      "value": "min 9.0 max 40.9 ms"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "checksum 오류는 손상 주입 구간에만 (enhanced checksum)",
+      "pass": true,
+      "value": "오류 7 / 1292 응답, 구간 밖 0"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "parity가 틀린 header(0x10, 올바른 값 0x50)에는 Door가 응답하지 않음",
+      "pass": true,
+      "value": "주입 header 있음, 다음 frame 0x1"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "Door Slave가 parity 오류 header를 기록",
+      "pass": true,
+      "value": "[lin_door] headers=1412 bad_parity=1 responses=202 commands=0 bad_checksum=0 wakeups=1"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "sleep 동안 LIN 버스 header 0개",
+      "pass": true,
+      "value": "0 headers in 1.00 s"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "wakeup 신호 후 100 ms 이상 지나 0 ms slot(0x11)부터 재시작",
+      "pass": true,
+      "value": "100.1 ms, PID 0x11"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "실내등 fade: 100 ms마다 10%씩 밝아짐",
+      "pass": true,
+      "value": "[10]"
+    }
+  ]
+}

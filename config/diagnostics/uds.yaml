@@ -1,0 +1,62 @@
+# Diagnostic definition (project.md §9). Single source for ECU UDS servers (C), DoIP Gateway (C++) and tester (Python).
+# Addresses, CAN IDs, DIDs and DTC choices are project selections, not OEM values.
+
+schema: 1
+
+doip:                         # ISO 13400-2
+  protocol_version: 0x02      # ISO 13400-2:2012
+  port: 13400
+  tester_address: 0x0E80      # §9.1
+  gateway_address: 0x1000     # §9.1
+  vin: "SILTEST0000000001"    # 17 characters, SIL test value (not a real VIN)
+  eid: "02:00:00:00:10:00"    # locally administered MAC-format entity ID
+  gid: "02:00:00:00:10:00"
+  max_uds_bytes: 4095         # Classical CAN ISO-TP limit
+  initial_inactivity_ms: 2000 # T_TCP_Initial_Inactivity: routing activation must follow the TCP connect
+  general_inactivity_ms: 300000
+
+timing:                       # ISO 14229-2 default values used as project values
+  p2_server_ms: 50
+  p2_star_server_ms: 5000
+  s3_server_ms: 5000          # §9.4 TesterPresent 5 s
+  security_delay_ms: 10000    # §9.4 10 s delay after 3 failures
+
+security:
+  level: 0x01                 # requestSeed 0x01 / sendKey 0x02
+  seed_bytes: 16              # §9.4
+  key_file_bytes: 32          # local secret, mode 0600, never in the source tree
+  response: "HMAC-SHA-256(key, ecu_logical_address_be16 || seed)"   # 32 bytes, address binds the key to one ECU
+  delay_after_failures: 3     # §9.4
+  lockout_after_failures: 5   # §9.4, until the ECU process restarts
+
+isotp:
+  tx_padding: 0xCC            # pad every frame to 8 bytes
+
+dids:                         # §9.3 project DIDs (raw units identical to the CAN signals)
+  0xF100: {name: engine_speed,      size: 2, unit: "1 rpm/bit"}
+  0xF101: {name: vehicle_speed,     size: 2, unit: "0.01 km/h/bit"}
+  0xF102: {name: coolant_temp,      size: 2, unit: "0.1 degC/bit signed"}
+  0xF110: {name: brake_pressure,    size: 2, unit: "0.1 bar/bit"}
+  0xF111: {name: abs_state,         size: 1, unit: "0/1"}
+  0xF180: {name: software_version,  size: 0, unit: "ASCII, variable"}
+  0xF181: {name: ecu_state,         size: 2, unit: "byte0 session (0x01/0x03), byte1 security (0 locked, 1 unlocked, 2 delay, 3 lockout)"}
+  0xF182: {name: active_fault_bitmap, size: 1, unit: "bit n = DTC n testFailed"}
+
+ecus:
+  - name: engine
+    logical_address: 0x1001   # §9.1
+    request_id: 0x7E0
+    response_id: 0x7E8
+    software_version: "SIL-ENGINE-ECU 0.5.0 (project build, not production)"
+    dids: [0xF100, 0xF102, 0xF180, 0xF181, 0xF182]
+    dtcs:                     # 3-byte UDS DTC: ISO 15031-6 code + failure type byte
+      - {code: 0x011700, name: "P0117 engine coolant temperature circuit low"}
+      - {code: 0x033500, name: "P0335 crankshaft position sensor circuit"}
+  - name: brake
+    logical_address: 0x1002
+    request_id: 0x7E1
+    response_id: 0x7E9
+    software_version: "SIL-BRAKE-ECU 0.5.0 (project build, not production)"
+    dids: [0xF101, 0xF110, 0xF111, 0xF180, 0xF181, 0xF182]   # vehicle speed comes from ABS/ESC (§5.5)
+    dtcs:
+      - {code: 0x403500, name: "C0035 left front wheel speed sensor circuit"}

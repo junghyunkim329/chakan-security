@@ -1,0 +1,11 @@
+{
+  "pass": false,
+  "criteria": [
+    {
+      "name": "시작 후 모든 프로세스 Running",
+      "pass": false,
+      "value": "state=Degraded"
+    }
+  ],
+  "metrics": {}
+}

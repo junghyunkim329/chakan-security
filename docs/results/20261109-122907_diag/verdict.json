@@ -1,0 +1,257 @@
+{
+  "pass": true,
+  "results": [
+    {
+      "group": "정상",
+      "name": "차량 식별 (UDP broadcast)",
+      "pass": true,
+      "value": "{'type': 4, 'vin': 'SILTEST0000000001', 'logical_address': 4096, 'eid': '02:00:00:00:10:00', 'gid': '02:00:00:00:10:00', 'further_action': 0, 'from': '10.10.0.1'}"
+    },
+    {
+      "group": "권한 부족",
+      "name": "등록되지 않은 tester 주소 0x0E81 routing 거부",
+      "pass": true,
+      "value": "code=0 closed=True"
+    },
+    {
+      "group": "권한 부족",
+      "name": "routing activation 전 진단 요청 거부",
+      "pass": true,
+      "value": "ack=nack(0x02) resp=None"
+    },
+    {
+      "group": "정상",
+      "name": "tester 0x0E80 routing activation",
+      "pass": true,
+      "value": "code=16"
+    },
+    {
+      "group": "정상",
+      "name": "Engine F100 엔진 회전수",
+      "pass": true,
+      "value": "800 rpm, 0.5 ms"
+    },
+    {
+      "group": "정상",
+      "name": "Brake F101 차량 속도",
+      "pass": true,
+      "value": "0 km/h"
+    },
+    {
+      "group": "정상",
+      "name": "Engine DTC 읽기 (주입한 2개)",
+      "pass": true,
+      "value": "['01170009', '03350009']"
+    },
+    {
+      "group": "정상",
+      "name": "TesterPresent",
+      "pass": true,
+      "value": "ack=ack resp=7e00"
+    },
+    {
+      "group": "다중 프레임",
+      "name": "Engine F180 소프트웨어 버전 (응답 > 7 byte)",
+      "pass": true,
+      "value": "55 byte"
+    },
+    {
+      "group": "다중 프레임",
+      "name": "Engine DID 4개 요청 (요청 9 byte)",
+      "pass": true,
+      "value": "67 byte 응답"
+    },
+    {
+      "group": "다중 프레임",
+      "name": "Brake DID 6개 요청 (요청 13 byte)",
+      "pass": true,
+      "value": "72 byte 응답"
+    },
+    {
+      "group": "권한 부족",
+      "name": "Default 세션 DTC 삭제 거부 (NRC 0x7F)",
+      "pass": true,
+      "value": "ack=ack resp=7f147f"
+    },
+    {
+      "group": "권한 부족",
+      "name": "Default 세션 SecurityAccess 거부 (NRC 0x7F)",
+      "pass": true,
+      "value": "ack=ack resp=7f277f"
+    },
+    {
+      "group": "정상",
+      "name": "Extended 세션 진입",
+      "pass": true,
+      "value": "ack=ack resp=5003003201f4"
+    },
+    {
+      "group": "권한 부족",
+      "name": "보안 해제 전 DTC 삭제 거부 (NRC 0x33)",
+      "pass": true,
+      "value": "ack=ack resp=7f1433"
+    },
+    {
+      "group": "권한 부족",
+      "name": "보안 해제 전 ECUReset 거부 (NRC 0x33)",
+      "pass": true,
+      "value": "ack=ack resp=7f1133"
+    },
+    {
+      "group": "권한 부족",
+      "name": "지원하지 않는 DID 거부 (NRC 0x31)",
+      "pass": true,
+      "value": "ack=ack resp=7f2231"
+    },
+    {
+      "group": "권한 부족",
+      "name": "범위 밖 서비스 RequestDownload 거부 (NRC 0x11)",
+      "pass": true,
+      "value": "ack=ack resp=7f3411"
+    },
+    {
+      "group": "권한 부족",
+      "name": "알 수 없는 대상 주소 0x1003 (DoIP NACK 0x03)",
+      "pass": true,
+      "value": "ack=nack(0x03) resp=None"
+    },
+    {
+      "group": "권한 부족",
+      "name": "잘못된 key 3회: 0x35, 0x35, 0x36",
+      "pass": true,
+      "value": "['7f2735', '7f2735', '7f2736']"
+    },
+    {
+      "group": "시간 초과",
+      "name": "10초 지연 중 seed 요청 거부 (NRC 0x37)",
+      "pass": true,
+      "value": "ack=ack resp=7f2737"
+    },
+    {
+      "group": "정상",
+      "name": "SecurityAccess (16-byte seed, HMAC-SHA-256)",
+      "pass": true,
+      "value": "ack=ack resp=6702"
+    },
+    {
+      "group": "정상",
+      "name": "보안 해제 후 DTC 삭제",
+      "pass": true,
+      "value": "ack=ack resp=54"
+    },
+    {
+      "group": "정상",
+      "name": "삭제 후 DTC 없음",
+      "pass": true,
+      "value": "ack=ack resp=590209"
+    },
+    {
+      "group": "정상",
+      "name": "ECUReset",
+      "pass": true,
+      "value": "ack=ack resp=5101"
+    },
+    {
+      "group": "정상",
+      "name": "Reset 후 Default 세션·잠김",
+      "pass": true,
+      "value": "ack=ack resp=62f1810100"
+    },
+    {
+      "group": "시간 초과",
+      "name": "TesterPresent 5초 없으면 Default 복귀 (S3)",
+      "pass": true,
+      "value": "ack=ack resp=62f1810100"
+    },
+    {
+      "group": "시간 초과",
+      "name": "S3 이후 DTC 삭제 거부 (NRC 0x7F)",
+      "pass": true,
+      "value": "ack=ack resp=7f147f"
+    },
+    {
+      "group": "시간 초과",
+      "name": "TesterPresent 유지 시 Extended·해제 유지",
+      "pass": true,
+      "value": "ack=ack resp=62f1810301"
+    },
+    {
+      "group": "시간 초과",
+      "name": "10초 지연 후 seed 요청 다시 허용",
+      "pass": true,
+      "value": "ack=ack resp=6701336aeaf27431136a027a296f6cd04e16"
+    },
+    {
+      "group": "권한 부족",
+      "name": "5회 실패 후 잠금 (NRC 0x36, 재시작 전까지)",
+      "pass": true,
+      "value": "ack=ack resp=7f2736 / ack=ack resp=7f2736"
+    },
+    {
+      "group": "권한 부족",
+      "name": "잠금 중에는 올바른 key도 불가",
+      "pass": true,
+      "value": "ack=ack resp=7f2736"
+    },
+    {
+      "group": "시간 초과",
+      "name": "응답 없는 ECU: ack 후 P2* 안에 응답 없음",
+      "pass": true,
+      "value": "ack=ack resp=None, 6006 ms"
+    },
+    {
+      "group": "시간 초과",
+      "name": "없는 ECU에 다중 프레임 요청: Flow Control 시간 초과 → NACK 0x06",
+      "pass": true,
+      "value": "ack=nack(0x06) resp=None, 1302 ms"
+    },
+    {
+      "group": "정상",
+      "name": "다른 ECU는 계속 응답",
+      "pass": true,
+      "value": "ack=ack resp=7e00"
+    },
+    {
+      "group": "다중 프레임",
+      "name": "CAN 캡처: Engine 요청 0x7E0에 FF·CF, 응답 0x7E8에 FC",
+      "pass": true,
+      "value": "{'SF': 27, 'FF': 5, 'CF': 14, '0x7E8 FC': 5}"
+    },
+    {
+      "group": "다중 프레임",
+      "name": "CAN 캡처: Engine 응답 0x7E8에 FF·CF, 요청 0x7E0에 FC",
+      "pass": true,
+      "value": "{'SF': 22, 'FF': 6, 'CF': 23, '0x7E0 FC': 6}"
+    },
+    {
+      "group": "다중 프레임",
+      "name": "CAN 캡처: Brake 0x7E1/0x7E9 다중 프레임",
+      "pass": true,
+      "value": "{'0x7e1 CF': 21, '0x7e1 FC': 6, '0x7e1 FF': 7, '0x7e1 SF': 12, '0x7e9 CF': 20, '0x7e9 FC': 6, '0x7e9 FF': 6, '0x7e9 SF': 11}"
+    },
+    {
+      "group": "다중 프레임",
+      "name": "CAN 캡처: 모든 진단 frame 8 byte (padding 0xCC)",
+      "pass": true,
+      "value": "197 frames"
+    }
+  ],
+  "pci": {
+    "0x7e0 SF": 27,
+    "0x7e8 SF": 22,
+    "0x7e1 SF": 12,
+    "0x7e9 SF": 11,
+    "0x7e0 FC": 6,
+    "0x7e8 CF": 23,
+    "0x7e8 FF": 6,
+    "0x7e0 FF": 5,
+    "0x7e8 FC": 5,
+    "0x7e0 CF": 14,
+    "0x7e1 FF": 7,
+    "0x7e9 FC": 6,
+    "0x7e1 CF": 21,
+    "0x7e1 FC": 6,
+    "0x7e9 CF": 20,
+    "0x7e9 FF": 6
+  }
+}

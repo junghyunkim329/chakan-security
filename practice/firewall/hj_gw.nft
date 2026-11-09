@@ -1,0 +1,42 @@
+# hj_gw 방화벽 (연습용)
+# Gateway는 서비스를 "제공하는 쪽"이다. Ethernet 상대는 AP(10.10.0.10) 하나뿐.
+# CAN(vxcan)은 IP 통신이 아니라서 이 방화벽과 관계없다.
+
+table inet hj_fw
+delete table inet hj_fw
+
+table inet hj_fw {
+	chain input {
+		type filter hook input priority filter; policy drop;
+
+		iif "lo" accept
+		ct state established,related accept
+
+		# SOME/IP-SD: AP의 "서비스 찾아요/구독할게요"
+		iifname "veth_gw" ip saddr 10.10.0.10 ip daddr { 10.10.0.1, 224.244.224.245 } udp sport 30490 udp dport 30490 accept
+		# SOME/IP method 요청과 DoIP 진단 연결 (TCP)
+		iifname "veth_gw" ip saddr 10.10.0.10 tcp dport { 30502, 30512, 13400 } accept
+		# DoIP: "진단 가능한 차량 있나요?"
+		iifname "veth_gw" ip saddr 10.10.0.10 udp dport 13400 accept
+	}
+
+	chain output {
+		type filter hook output priority filter; policy drop;
+
+		oif "lo" accept
+		ct state established,related accept
+
+		# SOME/IP-SD: "이런 서비스 있어요"
+		oifname "veth_gw" ip daddr { 10.10.0.10, 224.244.224.245 } udp sport 30490 udp dport 30490 accept
+		# SOME/IP event: 차량 상태, 차체 상태 방송
+		oifname "veth_gw" ip daddr 10.10.0.10 udp sport { 30501, 30511 } accept
+		# DoIP: 진단 안내/응답
+		oifname "veth_gw" ip daddr { 10.10.0.10, 10.10.0.255, 255.255.255.255 } udp sport 13400 accept
+	}
+
+	# Gateway는 IP를 다른 방으로 그냥 넘겨주지 않는다.
+	# CAN <-> Ethernet 변환은 나중에 Gateway 프로그램이 검사한 뒤에만 한다.
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+}

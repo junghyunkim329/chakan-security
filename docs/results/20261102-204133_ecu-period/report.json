@@ -1,0 +1,76 @@
+{
+  "date": "2026-11-02T20:41:56+0900",
+  "kernel": "7.0.0-38-generic",
+  "ecu_ns": "hj_veh",
+  "ecu_iface": "vxcan_veh",
+  "rx_iface": "vxcan_gw",
+  "results": [
+    {
+      "id": "0x100",
+      "name": "PT_EngineStatus",
+      "sender": "engine",
+      "period_ms": 10,
+      "frames": 2110,
+      "intervals": 1000,
+      "mean_ms": 10.0,
+      "mean_error_pct": 0.0,
+      "p99_abs_dev_ms": 0.9352,
+      "max_ms": 11.0714,
+      "min_ms": 9.0016,
+      "within_2ms_pct": 100.0,
+      "protocol_errors": 0
+    },
+    {
+      "id": "0x110",
+      "name": "PT_VehicleDynamics",
+      "sender": "brake",
+      "period_ms": 20,
+      "frames": 1055,
+      "intervals": 1000,
+      "mean_ms": 19.9995,
+      "mean_error_pct": -0.002,
+      "p99_abs_dev_ms": 0.8469,
+      "max_ms": 20.9689,
+      "min_ms": 18.96,
+      "within_2ms_pct": 100.0,
+      "protocol_errors": 0
+    },
+    {
+      "id": "0x180",
+      "name": "CH_BrakeStatus",
+      "sender": "brake",
+      "period_ms": 10,
+      "frames": 2110,
+      "intervals": 1000,
+      "mean_ms": 10.0,
+      "mean_error_pct": 0.0,
+      "p99_abs_dev_ms": 0.8117,
+      "max_ms": 10.9999,
+      "min_ms": 8.9228,
+      "within_2ms_pct": 100.0,
+      "protocol_errors": 0
+    },
+    {
+      "id": "0x200",
+      "name": "CH_SteeringStatus",
+      "sender": "steering",
+      "period_ms": 10,
+      "frames": 2110,
+      "intervals": 1000,
+      "mean_ms": 10.0,
+      "mean_error_pct": -0.0,
+      "p99_abs_dev_ms": 0.7612,
+      "max_ms": 11.019,
+      "min_ms": 9.0107,
+      "within_2ms_pct": 100.0,
+      "protocol_errors": 0
+    }
+  ],
+  "unexpected_ids": [],
+  "ecu_logs": [
+    "[engine] start iface=vxcan_veh\n[engine] PT_EngineStatus 0x100 sent=2110 overruns=0 errors=0\n",
+    "[brake] start iface=vxcan_veh\n[brake] CH_BrakeStatus 0x180 sent=2110 overruns=0 errors=0\n[brake] PT_VehicleDynamics 0x110 sent=1055 overruns=0 errors=0\n",
+    "[steering] start iface=vxcan_veh\n[steering] CH_SteeringStatus 0x200 sent=2110 overruns=0 errors=0\n"
+  ],
+  "failures": []
+}

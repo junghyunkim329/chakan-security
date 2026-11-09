@@ -1,0 +1,21 @@
+# hj_body 방화벽 (연습용)
+# 차체 방에는 IP 장치가 없다(LIN 전용선만 있음). 방 안 내선(lo) 말고는 전부 차단.
+
+table inet hj_fw
+delete table inet hj_fw
+
+table inet hj_fw {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+	}
+
+	chain output {
+		type filter hook output priority filter; policy drop;
+		oif "lo" accept
+	}
+
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+	}
+}

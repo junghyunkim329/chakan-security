@@ -1,0 +1,49 @@
+# VehicleState SOME/IP service (project.md §7.2). Project-specific definition, not ARXML.
+# Generator: tools/codegen/gen_services.py -> C++20 serializer + golden-byte fixture.
+# All multi-byte fields are network byte order (big-endian).
+
+schema: 1
+service:
+  name: VehicleState
+  id: 0x1000
+  instance: 0x0001
+  major: 1
+  minor: 0
+  unreliable_port: 30501   # UDP, events
+  reliable_port: 30502     # TCP, methods
+
+methods:
+  - {name: GetSnapshot, id: 0x0001, request_size: 0, response: VehicleStateData}
+
+events:
+  - {name: VehicleStateChanged, id: 0x8001, eventgroup: 0x0001, cycle_ms: 20, payload: VehicleStateData}
+
+types:
+  VehicleStateData:
+    size: 28
+    fields:
+      - {name: sequence,       offset: 0,  type: u32}
+      - {name: timestamp_us,   offset: 4,  type: u64}   # Gateway monotonic rx time of newest source frame
+      - {name: rpm,            offset: 12, type: u16}   # 1 rpm/bit
+      - {name: speed,          offset: 14, type: u16}   # 0.01 km/h/bit
+      - {name: throttle,       offset: 16, type: u8}    # 0.5 %/bit
+      - {name: coolant,        offset: 17, type: i16}   # 0.1 degC/bit
+      - {name: brake_pressure, offset: 19, type: u16}   # 0.1 bar/bit
+      - {name: abs_state,      offset: 21, type: u8}    # 0/1
+      - {name: validity,       offset: 22, type: u16}   # bit0 rpm, bit1 speed, bit2 throttle, bit3 coolant, bit4 brake, bit5 abs
+      - {name: freshness,      offset: 24, type: u16}   # same bit layout, 1 = FRESH
+      - {name: gateway_state,  offset: 26, type: u8}    # 0=Startup 1=Running 2=Degraded 3=Shutdown
+      - {name: reserved,       offset: 27, type: u8, must_be_zero: true}
+    golden:   # fixture for the generated serializer test
+      sequence: 0x01020304
+      timestamp_us: 0x1122334455667788
+      rpm: 2500
+      speed: 6000
+      throttle: 60
+      coolant: -400
+      brake_pressure: 300
+      abs_state: 1
+      validity: 0x003F
+      freshness: 0x001E
+      gateway_state: 1
+      reserved: 0
