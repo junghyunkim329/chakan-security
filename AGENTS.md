@@ -1,9 +1,14 @@
 # Workspace instructions
 
+## Work locations
+
+- Perform ECU-related work inside the `ecu/` directory.
+- Perform IDS-related work inside the `ids/` directory.
+
 ## Required context before work
 
-1. Read `/home/ghwls/work/project.md` completely before designing, implementing, testing, reviewing, or documenting this project.
-2. Under `/home/ghwls/work/docs`, the only always-designated source set is:
+1. Read `./project.md` completely before designing, implementing, testing, reviewing, or documenting this project.
+2. Under `./docs/check`, the only always-designated source set is:
    - `R155e (2).docx`
    - `R155am1e.docx`
    - `R155am2e.docx`
@@ -22,4 +27,3 @@ If more than one realistic vehicle architecture remains, the value is OEM-specif
 State the missing item, why it is needed now, the affected work, realistic options, and a recommendation. Do not silently invent a temporary value, OEM requirement, or default. Continue only work that is independent of the unresolved decision.
 
 Use `project.md` as the implementation source of truth. If it conflicts with the user's current direction, a required source document, or observed implementation and test evidence, surface the conflict and get a decision before proceeding.
-
