@@ -17,8 +17,7 @@ __pycache__/
 *.pyc
 
 # personal
-AGENTS.md
-project.md
+/docs/check/*
 *.docx
 *.pdf
 docs/notion/meeting-*.md
