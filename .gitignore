@@ -15,3 +15,9 @@
 # Python caches
 __pycache__/
 *.pyc
+
+# personal
+AGENTS.md
+project.md
+*.docx
+*.pdf
