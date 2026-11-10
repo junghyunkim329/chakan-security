@@ -6,11 +6,11 @@
 #   hj_ap : vehicle_state_consumer (CAN 장치 없음)
 #
 # 모든 프로그램은 root가 아닌 작업 폴더 주인 계정으로 실행한다 (project.md §11.1 non-root).
-# 사용 (root, practice/scripts/setup.sh 실행 후):  scripts/run/gateway-someip-test.sh [초]
+# 사용 (root, practice/scripts/setup.sh 실행 후):  ECU/scripts/run/gateway-someip-test.sh [초]
 # 결과: docs/results/<시각>_someip/summary.md
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 DURATION=${1:-30}
 WARMUP=3
 RUN_AS=$(stat -c %U "$ROOT")
@@ -47,7 +47,7 @@ pids+=($!)
 for p in "${pids[@]}"; do wait "$p" || true; done
 
 rc=0
-python3 -I "$ROOT/tests/integration/eval_someip_run.py" "$OUT" "$DURATION" "$WARMUP" || rc=$?
+python3 -I "$ROOT/ECU/tests/integration/eval_someip_run.py" "$OUT" "$DURATION" "$WARMUP" || rc=$?
 chown -R "$RUN_AS": "$OUT"
 echo "결과: $OUT/summary.md (종료코드 $rc)"
 exit "$rc"

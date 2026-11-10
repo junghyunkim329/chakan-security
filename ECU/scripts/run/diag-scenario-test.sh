@@ -6,11 +6,11 @@
 #   hj_ap : diag_scenarios.py (테스터)
 #
 # 실습 키: ~작업폴더주인/.config/vehicle-sil/diag_key (32 byte, 0600). 없으면 이 스크립트가 만든다. 소스에는 넣지 않는다.
-# 사용 (root, practice/scripts/setup.sh 실행 후):  scripts/run/diag-scenario-test.sh
+# 사용 (root, practice/scripts/setup.sh 실행 후):  ECU/scripts/run/diag-scenario-test.sh
 # 결과: docs/results/<시각>_diag/summary.md
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 RUN_AS=$(stat -c %U "$ROOT")
 HOME_DIR=$(getent passwd "$RUN_AS" | cut -d: -f6)
 KEY="$HOME_DIR/.config/vehicle-sil/diag_key"
@@ -42,7 +42,7 @@ as_user() { local ns=$1; shift; ip netns exec "$ns" setpriv --reuid="$RUN_AS" --
 
 echo "Phase 5 진단 시나리오 시험 시작: 약 1분 걸립니다. Ctrl+C를 누르지 말고 기다려 주세요."
 pids=()
-as_user hj_veh python3 -I "$ROOT/tools/diag/can_capture.py" vxcan_veh "$OUT/can.jsonl" 0x7E0 0x7E8 0x7E1 0x7E9 &
+as_user hj_veh python3 -I "$ROOT/ECU/tools/diag/can_capture.py" vxcan_veh "$OUT/can.jsonl" 0x7E0 0x7E8 0x7E1 0x7E9 &
 pids+=($!)
 as_user hj_veh "$B/ecu_engine" --iface vxcan_veh --diag-key "$KEY" --inject-dtc 2>"$OUT/ecu_engine.log" &
 pids+=($!)
@@ -53,7 +53,7 @@ pids+=($!)
 sleep 1
 
 rc=0
-as_user hj_ap python3 -I "$ROOT/tests/integration/diag_scenarios.py" "$OUT" "$KEY" 2>&1 | tee "$OUT/tester.log" || rc=$?
+as_user hj_ap python3 -I "$ROOT/ECU/tests/integration/diag_scenarios.py" "$OUT" "$KEY" 2>&1 | tee "$OUT/tester.log" || rc=$?
 
 # 프로세스 정리: 멈춘(SIGSTOP) 프로세스도 끝날 수 있게 SIGCONT 후 SIGTERM, 3초 안에 안 끝나면 SIGKILL
 for p in "${pids[@]}"; do kill -CONT "$p" 2>/dev/null || true; kill -TERM "$p" 2>/dev/null || true; done
@@ -65,7 +65,7 @@ for _ in $(seq 30); do
 done
 for p in "${pids[@]}"; do kill -KILL "$p" 2>/dev/null || true; wait "$p" 2>/dev/null || true; done
 
-python3 -I "$ROOT/tests/integration/eval_diag_run.py" "$OUT" > /dev/null || rc=1
+python3 -I "$ROOT/ECU/tests/integration/eval_diag_run.py" "$OUT" > /dev/null || rc=1
 cat "$OUT/summary.md"
 chown -R "$RUN_AS": "$OUT"
 echo "결과: $OUT/summary.md (종료코드 $rc)"

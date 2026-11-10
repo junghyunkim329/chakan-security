@@ -133,7 +133,7 @@ def inject_bad_header(pid):
 def main():
     RUN.mkdir(parents=True, exist_ok=True)
     os.chown(RUN, *(lambda pw: (pw.pw_uid, pw.pw_gid))(__import__("pwd").getpwnam(RUN_AS)))
-    start("capture", "hj_body", "python3", "-I", ROOT / "tools/diag/can_capture.py", "vxlin_body", OUT / "lin.jsonl",
+    start("capture", "hj_body", "python3", "-I", ROOT / "ECU/tools/diag/can_capture.py", "vxlin_body", OUT / "lin.jsonl",
           "0x001", "0x002", "0x003")
     start("engine", "hj_veh", B / "ecu_engine", "--iface", "vxcan_veh")
     for role in ("door", "window", "light"):

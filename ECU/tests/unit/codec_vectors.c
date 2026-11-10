@@ -1,4 +1,4 @@
-/* Prints C-encoded frames as JSON lines so tests/unit/python can cross-check the Python codec. */
+/* Prints C-encoded frames as JSON lines so ECU/tests/unit/python can cross-check the Python codec. */
 #include <stdio.h>
 
 #include "sil/pdu_codec.h"

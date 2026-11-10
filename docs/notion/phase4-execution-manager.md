@@ -111,7 +111,7 @@
 ### 4.2 시나리오 시험 (2026-11-09 11:57, `docs/results/20261109-115706_em/`)
 
 **방법**
-- `scripts/run/em-scenario-test.sh`: 빌드 결과물을 root 소유·쓰기 불가 폴더로 **배포**(SHA-256 기록)한 뒤, EM이 그 복사본으로 5개 프로그램을 연습용 방(`hj_*`)에 띄움
+- `ECU/scripts/run/em-scenario-test.sh`: 빌드 결과물을 root 소유·쓰기 불가 폴더로 **배포**(SHA-256 기록)한 뒤, EM이 그 복사본으로 5개 프로그램을 연습용 방(`hj_*`)에 띄움
 - 정상 시작 확인 → brake 강제 종료 → steering 응답 정지(SIGSTOP) → engine 3회 연속 종료 → EM 종료 요청 순서로 장애를 일으키고 감사 로그로 자동 판정
 - 환경: kernel 7.0.0-42-generic, 무부하 VM
 

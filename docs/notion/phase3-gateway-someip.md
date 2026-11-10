@@ -37,14 +37,14 @@ AP에는 CAN 장치가 없으므로 이 서비스가 AP가 차량 상태를 아�
 
 ## 2. 구현 내용
 
-### 2.1 CAN 입력 검증 (`src/gateway/can_input_validator.cpp`)
+### 2.1 CAN 입력 검증 (`ECU/src/gateway/can_input_validator.cpp`)
 - 검사 순서: **frame 형식 → ID → 길이 → CRC → 예약 비트 → counter → valid → 범위**
 - Phase 2에서 시험을 마친 codec을 그대로 재사용
 - 29-bit 확장 ID, RTR, error frame은 아래 11비트가 같아도 거부 (`ERR_FRAME_FORMAT`)
 - **CRC를 counter보다 먼저** 검사 → 깨진 frame이 번호표 상태를 바꾸지 못함
 - 메시지 종류(PDU)마다 counter 상태를 따로 관리
 
-### 2.2 최신 상태 보관 (`src/gateway/vehicle_state_cache.cpp`)
+### 2.2 최신 상태 보관 (`ECU/src/gateway/vehicle_state_cache.cpp`)
 - PDU마다 마지막 **정상** frame과 받은 시각(monotonic) 저장
 - 거부된 frame은 마지막 정상값을 바꾸지 않음
 - 통과·거부 개수, 연속 오류 수 기록
@@ -122,7 +122,7 @@ AP에는 CAN 장치가 없으므로 이 서비스가 AP가 차량 상태를 아�
 ### 4.2 통합 시험 (2026-11-09 11:34, `docs/results/20261109-113440_someip/`)
 
 **방법**
-- `scripts/run/gateway-someip-test.sh`: ECU 3개(`hj_veh`) → Gateway(`hj_gw`) → AP consumer(`hj_ap`)를 30초 실행, 처음 3초 제외하고 자동 판정
+- `ECU/scripts/run/gateway-someip-test.sh`: ECU 3개(`hj_veh`) → Gateway(`hj_gw`) → AP consumer(`hj_ap`)를 30초 실행, 처음 3초 제외하고 자동 판정
 - 모든 프로그램은 non-root 계정으로 실행. AP 방에는 CAN 장치 없음
 - 순서: ECU 시작 → 1초 뒤 Gateway → 1초 뒤 consumer (consumer가 시작된 시점부터 발견 시간 측정)
 - 환경: kernel 7.0.0-42-generic, 무부하 VM, vSomeIP 3.7.6

@@ -114,7 +114,7 @@ project.md에 없어서 정한 값. 팀 공식 문서에는 반영하지 않음.
 
 ### 5.2 시나리오 시험 (실행 대기)
 
-`scripts/run/lin-scenario-test.sh`: 실제 프로세스를 띄우고 AP 클라이언트로 요청, Slave에 장애를 주입, LIN선을 캡처해서 자동 판정 (약 40초).
+`ECU/scripts/run/lin-scenario-test.sh`: 실제 프로세스를 띄우고 AP 클라이언트로 요청, Slave에 장애를 주입, LIN선을 캡처해서 자동 판정 (약 40초).
 
 | 분류 | 주요 시험 |
 | --- | --- |

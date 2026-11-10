@@ -11,7 +11,7 @@
 ## ✅ 할 일 / 완료 기준
 
 - [x] 공통 신호 정의 파일 — `config/signals/can.yaml`
-- [x] PDU 인코딩·디코딩 — C(`src/common/pdu_codec.c`) + Python 기준 구현(`tools/sil_can/codec.py`)
+- [x] PDU 인코딩·디코딩 — C(`ECU/src/common/pdu_codec.c`) + Python 기준 구현(`tools/sil_can/codec.py`)
 - [x] CRC·counter 구현
 - [ ] Engine·Brake·Steering·Transmission 독립 프로세스 — **3/4 완료** (Transmission은 기어 R 값 확인 후)
 

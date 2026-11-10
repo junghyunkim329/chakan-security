@@ -11,6 +11,7 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 from diag.doip_tester import DoIPTester, security_key, vehicle_identification  # noqa: E402
 

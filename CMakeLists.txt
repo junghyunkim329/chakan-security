@@ -30,13 +30,13 @@ add_custom_command(
 
 add_library(sil_can STATIC
 	${SIL_GEN_DIR}/sil_can_signals_gen.c
-	src/common/crc8.c
-	src/common/pdu_codec.c)
-target_include_directories(sil_can PUBLIC src/common/include ${SIL_GEN_DIR})
+	ECU/src/common/crc8.c
+	ECU/src/common/pdu_codec.c)
+target_include_directories(sil_can PUBLIC ECU/src/common/include ${SIL_GEN_DIR})
 target_link_libraries(sil_can PUBLIC m)
 
-add_library(sil_scenario STATIC src/common/scenario.c)
-target_include_directories(sil_scenario PUBLIC src/common/include)
+add_library(sil_scenario STATIC ECU/src/common/scenario.c)
+target_include_directories(sil_scenario PUBLIC ECU/src/common/include)
 target_link_libraries(sil_scenario PUBLIC m)
 
 # ---- diagnostics: tables generated from config/diagnostics/uds.yaml (project.md §9) ----
@@ -48,8 +48,8 @@ add_custom_command(
 		${CMAKE_SOURCE_DIR}/tools/sil_can/diagnostics.py
 	COMMENT "Generating diagnostic tables from config/diagnostics/uds.yaml"
 	VERBATIM)
-add_library(sil_uds STATIC ${SIL_GEN_DIR}/sil_diag_gen.c src/common/uds_server.c)
-target_include_directories(sil_uds PUBLIC src/common/include ${SIL_GEN_DIR})
+add_library(sil_uds STATIC ${SIL_GEN_DIR}/sil_diag_gen.c ECU/src/common/uds_server.c)
+target_include_directories(sil_uds PUBLIC ECU/src/common/include ${SIL_GEN_DIR})
 target_link_libraries(sil_uds PUBLIC OpenSSL::Crypto)
 
 # ---- LIN body domain: tables generated from config/lin/network.yaml (project.md §6) ----
@@ -60,19 +60,19 @@ add_custom_command(
 		${CMAKE_SOURCE_DIR}/tools/sil_can/lin.py
 	COMMENT "Generating LIN tables from config/lin/network.yaml"
 	VERBATIM)
-add_library(sil_lin STATIC ${SIL_GEN_DIR}/sil_lin_gen.c src/common/lin.c src/lin/lin_slave.c)
-target_include_directories(sil_lin PUBLIC src/common/include src/lin ${SIL_GEN_DIR})
-add_executable(lin_slave src/lin/slave_main.c)
+add_library(sil_lin STATIC ${SIL_GEN_DIR}/sil_lin_gen.c ECU/src/common/lin.c ECU/src/lin/lin_slave.c)
+target_include_directories(sil_lin PUBLIC ECU/src/common/include ECU/src/lin ${SIL_GEN_DIR})
+add_executable(lin_slave ECU/src/lin/slave_main.c)
 target_link_libraries(lin_slave PRIVATE sil_lin)
 
-add_library(sil_heartbeat STATIC src/common/heartbeat.c)
-target_include_directories(sil_heartbeat PUBLIC src/common/include)
+add_library(sil_heartbeat STATIC ECU/src/common/heartbeat.c)
+target_include_directories(sil_heartbeat PUBLIC ECU/src/common/include)
 
-add_library(sil_ecu_runtime STATIC src/common/ecu_runtime.c)
+add_library(sil_ecu_runtime STATIC ECU/src/common/ecu_runtime.c)
 target_link_libraries(sil_ecu_runtime PUBLIC sil_can sil_scenario sil_heartbeat sil_uds)
 
 foreach(ecu engine brake steering)
-	add_executable(ecu_${ecu} src/ecu/${ecu}/main.c)
+	add_executable(ecu_${ecu} ECU/src/ecu/${ecu}/main.c)
 	target_link_libraries(ecu_${ecu} PRIVATE sil_ecu_runtime)
 endforeach()
 
@@ -91,27 +91,27 @@ add_dependencies(sil_services sil_services_gen)
 
 # ---- Vehicle Gateway ----
 add_library(sil_gateway STATIC
-	src/gateway/can_input_validator.cpp
-	src/gateway/vehicle_state_cache.cpp
-	src/gateway/lin_master.cpp
-	src/gateway/body_control.cpp)
-target_include_directories(sil_gateway PUBLIC src/gateway)
+	ECU/src/gateway/can_input_validator.cpp
+	ECU/src/gateway/vehicle_state_cache.cpp
+	ECU/src/gateway/lin_master.cpp
+	ECU/src/gateway/body_control.cpp)
+target_include_directories(sil_gateway PUBLIC ECU/src/gateway)
 target_link_libraries(sil_gateway PUBLIC sil_can sil_services sil_lin)
 
 # ---- Execution Manager (project.md §8) ----
-add_library(sil_em STATIC src/adaptive/execution-manager/supervisor.cpp)
-target_include_directories(sil_em PUBLIC src/adaptive/execution-manager)
+add_library(sil_em STATIC ECU/src/adaptive/execution-manager/supervisor.cpp)
+target_include_directories(sil_em PUBLIC ECU/src/adaptive/execution-manager)
 
 # manifest parsing uses Boost.PropertyTree (header-only) from the pinned local Boost (scripts/setup/build-vsomeip.sh)
 set(SIL_BOOST_INCLUDE ${CMAKE_SOURCE_DIR}/third_party/boost-root/usr/include)
 if(EXISTS ${SIL_BOOST_INCLUDE}/boost/property_tree/json_parser.hpp)
-	add_library(sil_em_manifest STATIC src/adaptive/execution-manager/manifest.cpp)
+	add_library(sil_em_manifest STATIC ECU/src/adaptive/execution-manager/manifest.cpp)
 	target_include_directories(sil_em_manifest SYSTEM PUBLIC ${SIL_BOOST_INCLUDE})
 	target_link_libraries(sil_em_manifest PUBLIC sil_em)
-	add_executable(execution_manager src/adaptive/execution-manager/em_main.cpp)
+	add_executable(execution_manager ECU/src/adaptive/execution-manager/em_main.cpp)
 	target_link_libraries(execution_manager PRIVATE sil_em_manifest)
-	add_executable(test_manifest tests/unit/test_manifest.cpp)
-	target_include_directories(test_manifest PRIVATE tests/unit)
+	add_executable(test_manifest ECU/tests/unit/test_manifest.cpp)
+	target_include_directories(test_manifest PRIVATE ECU/tests/unit)
 	target_link_libraries(test_manifest PRIVATE sil_em_manifest)
 	add_test(NAME test_manifest COMMAND test_manifest ${CMAKE_SOURCE_DIR}/config/manifests/execution.json)
 else()
@@ -119,21 +119,21 @@ else()
 endif()
 
 # ---- DoIP entity in the Gateway (project.md §9.1) ----
-add_library(sil_doip STATIC src/gateway/doip.cpp)
-target_include_directories(sil_doip PUBLIC src/gateway ${SIL_GEN_DIR})
+add_library(sil_doip STATIC ECU/src/gateway/doip.cpp)
+target_include_directories(sil_doip PUBLIC ECU/src/gateway ${SIL_GEN_DIR})
 target_link_libraries(sil_doip PUBLIC sil_uds)
-add_executable(doip_gateway src/gateway/doip_main.cpp)
+add_executable(doip_gateway ECU/src/gateway/doip_main.cpp)
 target_link_libraries(doip_gateway PRIVATE sil_doip)
 
 # ---- SOME/IP processes (need vSomeIP built into third_party/vsomeip, see scripts/setup/build-vsomeip.sh) ----
 find_package(vsomeip3 CONFIG QUIET PATHS ${CMAKE_SOURCE_DIR}/third_party/vsomeip NO_DEFAULT_PATH)
 if(vsomeip3_FOUND)
 	find_package(Threads REQUIRED)
-	add_executable(vehicle_gateway src/gateway/gateway_main.cpp)
+	add_executable(vehicle_gateway ECU/src/gateway/gateway_main.cpp)
 	target_link_libraries(vehicle_gateway PRIVATE sil_gateway sil_heartbeat sil_uds vsomeip3 Threads::Threads)
-	add_executable(body_control_client src/adaptive/body-control/client_main.cpp)
+	add_executable(body_control_client ECU/src/adaptive/body-control/client_main.cpp)
 	target_link_libraries(body_control_client PRIVATE sil_services vsomeip3 Threads::Threads)
-	add_executable(vehicle_state_consumer src/adaptive/vehicle-state/consumer_main.cpp)
+	add_executable(vehicle_state_consumer ECU/src/adaptive/vehicle-state/consumer_main.cpp)
 	target_link_libraries(vehicle_state_consumer PRIVATE sil_services sil_heartbeat vsomeip3 Threads::Threads)
 else()
 	message(STATUS "vSomeIP not found in third_party/vsomeip: vehicle_gateway and vehicle_state_consumer are skipped")
@@ -142,45 +142,45 @@ endif()
 # ---- tests ----
 enable_testing()
 
-add_executable(test_supervisor tests/unit/test_supervisor.cpp)
-target_include_directories(test_supervisor PRIVATE tests/unit)
+add_executable(test_supervisor ECU/tests/unit/test_supervisor.cpp)
+target_include_directories(test_supervisor PRIVATE ECU/tests/unit)
 target_link_libraries(test_supervisor PRIVATE sil_em)
 add_test(NAME test_supervisor COMMAND test_supervisor)
 
-add_executable(test_doip tests/unit/test_doip.cpp)
-target_include_directories(test_doip PRIVATE tests/unit)
+add_executable(test_doip ECU/tests/unit/test_doip.cpp)
+target_include_directories(test_doip PRIVATE ECU/tests/unit)
 target_link_libraries(test_doip PRIVATE sil_doip)
 add_test(NAME test_doip COMMAND test_doip)
 
 foreach(t test_can_input_validator test_vehicle_state_cache test_vehicle_state_payload test_lin_master)
-	add_executable(${t} tests/unit/${t}.cpp)
-	target_include_directories(${t} PRIVATE tests/unit)
+	add_executable(${t} ECU/tests/unit/${t}.cpp)
+	target_include_directories(${t} PRIVATE ECU/tests/unit)
 	target_link_libraries(${t} PRIVATE sil_gateway)
 	add_test(NAME ${t} COMMAND ${t})
 endforeach()
 
-add_executable(test_lin tests/unit/test_lin.c)
-target_include_directories(test_lin PRIVATE tests/unit)
+add_executable(test_lin ECU/tests/unit/test_lin.c)
+target_include_directories(test_lin PRIVATE ECU/tests/unit)
 target_link_libraries(test_lin PRIVATE sil_lin)
 add_test(NAME test_lin COMMAND test_lin)
 
-add_executable(test_uds_server tests/unit/test_uds_server.c)
-target_include_directories(test_uds_server PRIVATE tests/unit)
+add_executable(test_uds_server ECU/tests/unit/test_uds_server.c)
+target_include_directories(test_uds_server PRIVATE ECU/tests/unit)
 target_link_libraries(test_uds_server PRIVATE sil_uds)
 add_test(NAME test_uds_server COMMAND test_uds_server)
 
 foreach(t test_crc8 test_codec test_scenario)
-	add_executable(${t} tests/unit/${t}.c)
-	target_include_directories(${t} PRIVATE tests/unit)
+	add_executable(${t} ECU/tests/unit/${t}.c)
+	target_include_directories(${t} PRIVATE ECU/tests/unit)
 	target_link_libraries(${t} PRIVATE sil_can sil_scenario)
 	add_test(NAME ${t} COMMAND ${t})
 endforeach()
 
-add_executable(codec_vectors tests/unit/codec_vectors.c)
+add_executable(codec_vectors ECU/tests/unit/codec_vectors.c)
 target_link_libraries(codec_vectors PRIVATE sil_can)
 
 # C codec and Python reference codec must produce identical bytes from the same YAML
 add_test(NAME python_codec
-	COMMAND ${Python3_EXECUTABLE} -m pytest -q -p no:cacheprovider ${CMAKE_SOURCE_DIR}/tests/unit/python)
+	COMMAND ${Python3_EXECUTABLE} -m pytest -q -p no:cacheprovider ${CMAKE_SOURCE_DIR}/ECU/tests/unit/python)
 set_tests_properties(python_codec PROPERTIES
 	ENVIRONMENT "SIL_CODEC_VECTORS=$<TARGET_FILE:codec_vectors>")

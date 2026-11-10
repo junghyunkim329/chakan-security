@@ -1,11 +1,11 @@
-"""Reference PDU codec in Python. Must produce the same bytes as src/common/pdu_codec.c."""
+"""Reference PDU codec in Python. Must produce the same bytes as ECU/src/common/pdu_codec.c."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 from .definitions import Definitions, Pdu, Signal
 
-# Status names match sil_status_t in src/common/include/sil/pdu_codec.h
+# Status names match sil_status_t in ECU/src/common/include/sil/pdu_codec.h
 OK = "OK"
 ERR_UNKNOWN_ID = "ERR_UNKNOWN_ID"
 ERR_DLC = "ERR_DLC"

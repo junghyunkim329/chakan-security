@@ -10,7 +10,7 @@ Pass criteria (project selection, 2026-11-02, team confirmation pending), per PD
   - no interval longer than 2x nominal
   - every frame passes ID/DLC/CRC/reserved/valid/range checks and counter delta == 1
 
-Must be started as root inside the receiving namespace, e.g. scripts/run/ecu-period-test.sh.
+Must be started as root inside the receiving namespace, e.g. ECU/scripts/run/ecu-period-test.sh.
 """
 import json
 import os
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "tools"))
 from sil_can import codec, definitions  # noqa: E402
 
@@ -38,7 +38,7 @@ SO_TIMESTAMPNS = getattr(socket, "SO_TIMESTAMPNS", 35)
 CAN_FRAME = struct.Struct("=IB3x8s")
 
 pytestmark = pytest.mark.skipif(os.environ.get("SIL_RUN_CAN_TESTS") != "1",
-                                reason="needs root and the vehicle namespaces; use scripts/run/ecu-period-test.sh")
+                                reason="needs root and the vehicle namespaces; use ECU/scripts/run/ecu-period-test.sh")
 
 
 def _env(name):

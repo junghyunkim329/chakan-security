@@ -48,7 +48,7 @@
 
 ## 3. 구현 내용
 
-### 3.1 UDS 서버 (Engine·Brake, `src/common/uds_server.c`)
+### 3.1 UDS 서버 (Engine·Brake, `ECU/src/common/uds_server.c`)
 | 서비스 | 내용 | 허용 조건 |
 | --- | --- | --- |
 | 0x10 세션 | Default(0x01) / Extended(0x03) | 항상 |
@@ -72,7 +72,7 @@
 | Engine | F100 회전수, F102 냉각수 온도, F180 SW 버전, F181 상태, F182 고장 bitmap | P0117 냉각수 온도 회로 Low, P0335 크랭크 위치 센서 |
 | Brake | F101 차량 속도, F110 브레이크 압력, F111 ABS, F180, F181, F182 | C0035 왼쪽 앞바퀴 속도 센서 |
 
-### 3.3 Gateway DoIP (`src/gateway/doip.cpp`, `doip_main.cpp`)
+### 3.3 Gateway DoIP (`ECU/src/gateway/doip.cpp`, `doip_main.cpp`)
 - UDP 13400: 차량 식별 요청 → VIN·Gateway 주소·EID 응답
 - TCP 13400: **routing activation**(등록된 진단기 0x0E80만 허용) → 진단 메시지 전달
 - 활성화 전 진단 요청, 다른 주소를 사칭한 요청 → 거부하고 연결 종료
@@ -95,7 +95,7 @@
 
 ### 4.2 진단 시나리오 시험 (실행 대기)
 
-`scripts/run/diag-scenario-test.sh`: Engine(고장 코드 주입)·Brake·Gateway를 띄우고 AP 방의 테스터가 실제 DoIP → ISO-TP 경로로 시험. 차량 쪽 CAN선을 캡처해서 다중 프레임 조각(FF/CF/FC)이 실제로 오갔는지도 확인.
+`ECU/scripts/run/diag-scenario-test.sh`: Engine(고장 코드 주입)·Brake·Gateway를 띄우고 AP 방의 테스터가 실제 DoIP → ISO-TP 경로로 시험. 차량 쪽 CAN선을 캡처해서 다중 프레임 조각(FF/CF/FC)이 실제로 오갔는지도 확인.
 
 | 분류 | 주요 시험 |
 | --- | --- |

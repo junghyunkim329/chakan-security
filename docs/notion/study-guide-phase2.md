@@ -71,8 +71,8 @@ ip netns exec hj_veh cansend vxcan_veh 123#DEADBEEF     # 터미널 B
 | **reserved** | 안 쓰는 칸, 항상 0 | 0x180 byte 4~5 |
 
 **② 코드**
-- `src/common/pdu_codec.c` → `put_signal()`, `get_signal()`
-- `tests/unit/test_codec.c` → `test_known_bytes()` (실제 바이트 예시)
+- `ECU/src/common/pdu_codec.c` → `put_signal()`, `get_signal()`
+- `ECU/tests/unit/test_codec.c` → `test_known_bytes()` (실제 바이트 예시)
 
 **③ 해보기**: `ecu_engine` 실행하고 `candump`로 본 바이트를 손으로 해석
 ```
@@ -95,7 +95,7 @@ ip netns exec hj_veh cansend vxcan_veh 123#DEADBEEF     # 터미널 B
 - **CAN ID도 계산에 포함** → 다른 ID에 끼워 넣은 메시지도 탐지
 - 표준 검사값: `"123456789"` → `0x4B` (구현이 맞는지 확인하는 방법)
 
-**② 코드**: `src/common/crc8.c`, `tests/unit/test_crc8.c`
+**② 코드**: `ECU/src/common/crc8.c`, `ECU/tests/unit/test_crc8.c`
 
 **④ 질문**
 7. 해커가 rpm을 9000으로 바꾸고 CRC도 다시 계산하면 막을 수 있을까?
@@ -157,7 +157,7 @@ ip netns exec hj_veh cansend vxcan_veh 123#DEADBEEF     # 터미널 B
 - **절대 시각 예약**: "지금부터 10ms 쉬기"가 아니라 "시작+10ms, +20ms…에 깨기" → 오차가 쌓이지 않음 (drift 방지)
 - **jitter**: 매번 조금씩 흔들리는 정도. 우리 결과 약 1ms
 
-**② 코드**: `src/common/ecu_runtime.c` → `sleep_until()`, `next[i] += period`
+**② 코드**: `ECU/src/common/ecu_runtime.c` → `sleep_until()`, `next[i] += period`
 
 **④ 질문**
 13. "10ms 쉬고 보내기"를 1000번 반복하면 왜 10초보다 길어질까?
@@ -173,7 +173,7 @@ ip netns exec hj_veh cansend vxcan_veh 123#DEADBEEF     # 터미널 B
 | **코드 생성** | YAML → C 표 자동 생성 (손으로 두 번 안 씀) | `tools/codegen/gen_can_signals.py` |
 | **CMake + Ninja** | 빌드 자동화 | `CMakeLists.txt` |
 | **CTest** | C 시험 실행 | `ctest --test-dir build` |
-| **pytest** | Python 시험 | `tests/unit/python/`, `tests/integration/` |
+| **pytest** | Python 시험 | `ECU/tests/unit/python/`, `ECU/tests/integration/` |
 | **cppcheck** | C 코드 실수 찾기 | — |
 
 **핵심 원칙: 단일 원본 (single source of truth)**

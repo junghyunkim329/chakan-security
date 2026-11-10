@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Phase 4 시나리오 시험: Execution Manager가 ECU·Gateway·AP를 띄우고, 종료·응답 정지·반복 실패를 주입해 판정한다.
-# 사용 (root, practice/scripts/setup.sh 실행 후):  scripts/run/em-scenario-test.sh
+# 사용 (root, practice/scripts/setup.sh 실행 후):  ECU/scripts/run/em-scenario-test.sh
 # 결과: docs/results/<시각>_em/summary.md
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 RUN_AS=$(stat -c %U "$ROOT")
 
 [[ $EUID -eq 0 ]] || { echo "root 권한이 필요합니다 (su - 후 실행)"; exit 1; }
@@ -29,7 +29,7 @@ sha256sum "$BIN"/* > "$OUT/deployed-sha256.txt"
 echo "Phase 4 시나리오 시험 시작: 약 1분 걸립니다. Ctrl+C를 누르지 말고 기다려 주세요."
 
 rc=0
-python3 -I "$ROOT/tests/integration/em_scenarios.py" "$OUT" "$ROOT" "$RUN_AS" "$BIN" || rc=$?
+python3 -I "$ROOT/ECU/tests/integration/em_scenarios.py" "$OUT" "$ROOT" "$RUN_AS" "$BIN" || rc=$?
 # 시험이 끝났으므로 결과 폴더(배포 복사본 포함)를 작업 폴더 주인에게 돌려줘 나중에 지울 수 있게 한다
 chown -R "$RUN_AS": "$OUT"
 echo "결과: $OUT/summary.md (종료코드 $rc)"
