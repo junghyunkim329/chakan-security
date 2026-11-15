@@ -1,12 +1,12 @@
-# hj_ap 방화벽 (연습용)
+# ns_ap 방화벽 (연습용)
 # AP는 Gateway에게 서비스를 "요청하는 쪽"이다. 상대는 Gateway(10.10.0.1) 하나뿐.
 # 규칙: 기본은 전부 차단(drop), 아래 적힌 것만 통과(accept).
 
 # 이미 있으면 지우고 새로 만든다 (여러 번 적용해도 결과가 같다)
-table inet hj_fw
-delete table inet hj_fw
+table inet ns_fw
+delete table inet ns_fw
 
-table inet hj_fw {
+table inet ns_fw {
 	# 들어오는 통신
 	chain input {
 		type filter hook input priority filter; policy drop;

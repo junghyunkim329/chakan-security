@@ -1,6 +1,6 @@
 // Adaptive Central Node: VehicleState consumer (project.md §7.2, §15.2).
 // Discovers the service, subscribes to VehicleStateChanged, calls GetSnapshot, and reports
-// discovery time and CAN-rx -> event-rx latency. Has no CAN access (runs in ns_ap / hj_ap).
+// discovery time and CAN-rx -> event-rx latency. Has no CAN access (runs in ns_ap).
 #include <algorithm>
 #include <atomic>
 #include <chrono>

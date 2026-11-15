@@ -11,7 +11,7 @@ RUN_AS=$(stat -c %U "$ROOT")
 for b in ecu_engine lin_slave vehicle_gateway body_control_client; do
 	[[ -x "$ROOT/build/$b" ]] || { echo "빌드가 없습니다: $b (ghwls로 cmake --build build 먼저)"; exit 1; }
 done
-for ns in hj_ap hj_gw hj_veh hj_body; do
+for ns in ns_ap ns_gateway ns_vehicle ns_body; do
 	ip netns list | awk '{print $1}' | grep -qxF "$ns" || { echo "$ns 가 없습니다: practice/scripts/setup.sh 먼저"; exit 1; }
 done
 

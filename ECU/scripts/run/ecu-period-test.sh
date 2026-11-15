@@ -3,13 +3,13 @@
 # ECU 3개를 차량 namespace에서 일반 사용자(nobody)로 실행하고, Gateway 쪽 CAN선에서 받아 주기를 잰다.
 #
 # 사용 (root):  ECU/scripts/run/ecu-period-test.sh [ECU_NS RX_NS ECU_IF RX_IF]
-#   기본값은 연습 구성: hj_veh hj_gw vxcan_veh vxcan_gw
+#   기본값은 연습 구성: ns_vehicle ns_gateway vxcan_veh vxcan_gw
 # 결과: docs/results/<시각>_ecu-period/report.json
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-ECU_NS=${1:-hj_veh}
-RX_NS=${2:-hj_gw}
+ECU_NS=${1:-ns_vehicle}
+RX_NS=${2:-ns_gateway}
 ECU_IF=${3:-vxcan_veh}
 RX_IF=${4:-vxcan_gw}
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Phase 5 진단 시나리오 시험: AP 테스터 -> DoIP -> Gateway -> ISO-TP -> Engine·Brake UDS 서버
 #
-#   hj_veh: ecu_engine (--inject-dtc), ecu_brake, can_capture (진단 CAN frame 기록)
-#   hj_gw : doip_gateway (TCP/UDP 13400)
-#   hj_ap : diag_scenarios.py (테스터)
+#   ns_vehicle: ecu_engine (--inject-dtc), ecu_brake, can_capture (진단 CAN frame 기록)
+#   ns_gateway: doip_gateway (TCP/UDP 13400)
+#   ns_ap     : diag_scenarios.py (테스터)
 #
 # 실습 키: ~작업폴더주인/.config/vehicle-sil/diag_key (32 byte, 0600). 없으면 이 스크립트가 만든다. 소스에는 넣지 않는다.
 # 사용 (root, practice/scripts/setup.sh 실행 후):  ECU/scripts/run/diag-scenario-test.sh
@@ -20,7 +20,7 @@ B="$ROOT/build"
 for b in ecu_engine ecu_brake doip_gateway; do
 	[[ -x "$B/$b" ]] || { echo "빌드가 없습니다: $b (ghwls로 cmake --build build 먼저)"; exit 1; }
 done
-for ns in hj_ap hj_gw hj_veh; do
+for ns in ns_ap ns_gateway ns_vehicle; do
 	ip netns list | awk '{print $1}' | grep -qxF "$ns" || { echo "$ns 가 없습니다: practice/scripts/setup.sh 먼저"; exit 1; }
 done
 
@@ -42,18 +42,18 @@ as_user() { local ns=$1; shift; ip netns exec "$ns" setpriv --reuid="$RUN_AS" --
 
 echo "Phase 5 진단 시나리오 시험 시작: 약 1분 걸립니다. Ctrl+C를 누르지 말고 기다려 주세요."
 pids=()
-as_user hj_veh python3 -I "$ROOT/ECU/tools/diag/can_capture.py" vxcan_veh "$OUT/can.jsonl" 0x7E0 0x7E8 0x7E1 0x7E9 &
+as_user ns_vehicle python3 -I "$ROOT/ECU/tools/diag/can_capture.py" vxcan_veh "$OUT/can.jsonl" 0x7E0 0x7E8 0x7E1 0x7E9 &
 pids+=($!)
-as_user hj_veh "$B/ecu_engine" --iface vxcan_veh --diag-key "$KEY" --inject-dtc 2>"$OUT/ecu_engine.log" &
+as_user ns_vehicle "$B/ecu_engine" --iface vxcan_veh --diag-key "$KEY" --inject-dtc 2>"$OUT/ecu_engine.log" &
 pids+=($!)
-as_user hj_veh "$B/ecu_brake" --iface vxcan_veh --diag-key "$KEY" 2>"$OUT/ecu_brake.log" &
+as_user ns_vehicle "$B/ecu_brake" --iface vxcan_veh --diag-key "$KEY" 2>"$OUT/ecu_brake.log" &
 pids+=($!)
-as_user hj_gw "$B/doip_gateway" --eth-addr 10.10.0.1 --can-iface vxcan_gw >"$OUT/doip_gateway.json" 2>"$OUT/doip_gateway.log" &
+as_user ns_gateway "$B/doip_gateway" --eth-addr 10.10.0.1 --can-iface vxcan_gw >"$OUT/doip_gateway.json" 2>"$OUT/doip_gateway.log" &
 pids+=($!)
 sleep 1
 
 rc=0
-as_user hj_ap python3 -I "$ROOT/ECU/tests/integration/diag_scenarios.py" "$OUT" "$KEY" 2>&1 | tee "$OUT/tester.log" || rc=$?
+as_user ns_ap python3 -I "$ROOT/ECU/tests/integration/diag_scenarios.py" "$OUT" "$KEY" 2>&1 | tee "$OUT/tester.log" || rc=$?
 
 # 프로세스 정리: 멈춘(SIGSTOP) 프로세스도 끝날 수 있게 SIGCONT 후 SIGTERM, 3초 안에 안 끝나면 SIGKILL
 for p in "${pids[@]}"; do kill -CONT "$p" 2>/dev/null || true; kill -TERM "$p" 2>/dev/null || true; done

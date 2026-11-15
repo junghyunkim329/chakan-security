@@ -1,11 +1,11 @@
-# hj_gw 방화벽 (연습용)
+# ns_gateway 방화벽 (연습용)
 # Gateway는 서비스를 "제공하는 쪽"이다. Ethernet 상대는 AP(10.10.0.10) 하나뿐.
 # CAN(vxcan)은 IP 통신이 아니라서 이 방화벽과 관계없다.
 
-table inet hj_fw
-delete table inet hj_fw
+table inet ns_fw
+delete table inet ns_fw
 
-table inet hj_fw {
+table inet ns_fw {
 	chain input {
 		type filter hook input priority filter; policy drop;
 

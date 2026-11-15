@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Phase 5 diagnostic scenarios from the AP side: DoIP -> Gateway -> ISO-TP -> UDS (project.md §9, §15.2).
 
-usage (in hj_ap as the run user): diag_scenarios.py <out_dir> <key_file>
+usage (in ns_ap as the run user): diag_scenarios.py <out_dir> <key_file>
 Writes <out_dir>/tester.json. Engine is started with --inject-dtc; brake is stopped/killed by this script.
 """
 import json

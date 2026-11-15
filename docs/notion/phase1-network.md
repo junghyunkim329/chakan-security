@@ -18,7 +18,7 @@
 - [x] AP의 직접 CAN 접근 실패
 - [x] Gateway 통신 성공
 
-> ⚠️ 위 체크는 **연습용 이름(`hj_ap`, `hj_gw`, `hj_veh`)** 으로 만든 구성에서 확인한 결과입니다. 팀 공용 `ns_ap`/`ns_gateway`/`ns_vehicle`은 김정현님이 사용 중이라 건드리지 않았습니다.
+> 현재 네트워크 namespace 이름은 `ns_ap`, `ns_gateway`, `ns_vehicle`로 통일되어 있습니다.
 
 ---
 
@@ -27,7 +27,7 @@
 컴퓨터 한 대 안에 **서로 못 보는 방 3개**를 만들고, **필요한 곳에만 선을 연결**한 뒤, **정해진 통신만 통과**하도록 방화벽을 걸었다.
 
 ```
-[hj_ap] ════ Ethernet(veth) ════ [hj_gw] ──── CAN(vxcan) ──── [hj_veh]
+[ns_ap] ════ Ethernet(veth) ════ [ns_gateway] ──── CAN(vxcan) ──── [ns_vehicle]
  중앙 컴퓨터                       관문                          엔진·브레이크 ECU
  10.10.0.10                      10.10.0.1
  ❌ CAN선 없음                    ✅ 양쪽 다 연결                ❌ IP 없음
@@ -54,8 +54,8 @@
 - 만들면 `lo`(방 안 내선 전화)만 있고 꺼져 있음 → 켜 줌
 
 ```bash
-ip netns add hj_ap
-ip -n hj_ap link set lo up
+ip netns add ns_ap
+ip -n ns_ap link set lo up
 ```
 
 **확인한 것**
@@ -67,11 +67,11 @@ ip -n hj_ap link set lo up
 - veth = 양쪽 끝이 있는 가상 랜선. 실제 차의 차량용 Ethernet에 해당
 
 ```bash
-ip link add veth_ap netns hj_ap type veth peer name veth_gw netns hj_gw
-ip -n hj_ap addr add 10.10.0.10/24 dev veth_ap
-ip -n hj_gw addr add 10.10.0.1/24 dev veth_gw
-ip -n hj_ap link set veth_ap up
-ip -n hj_gw link set veth_gw up
+ip link add veth_ap netns ns_ap type veth peer name veth_gw netns ns_gateway
+ip -n ns_ap addr add 10.10.0.10/24 dev veth_ap
+ip -n ns_gateway addr add 10.10.0.1/24 dev veth_gw
+ip -n ns_ap link set veth_ap up
+ip -n ns_gateway link set veth_gw up
 ```
 
 **확인한 것**
@@ -84,9 +84,9 @@ ip -n hj_gw link set veth_gw up
 - **AP에는 CAN선을 꽂지 않는다** ← 핵심
 
 ```bash
-ip link add vxcan_gw netns hj_gw type vxcan peer name vxcan_veh netns hj_veh
-ip -n hj_gw link set vxcan_gw up
-ip -n hj_veh link set vxcan_veh up
+ip link add vxcan_gw netns ns_gateway type vxcan peer name vxcan_veh netns ns_vehicle
+ip -n ns_gateway link set vxcan_gw up
+ip -n ns_vehicle link set vxcan_veh up
 ```
 
 **확인한 것**
@@ -106,9 +106,9 @@ ip -n hj_veh link set vxcan_veh up
 
 | 방 | 출입 명단 |
 | --- | --- |
-| `hj_ap` | Gateway로 요청 보내기만: SOME/IP-SD(UDP 30490), SOME/IP 메서드(TCP 30502·30512), DoIP(TCP/UDP 13400) + 받은 요청의 답장 |
-| `hj_gw` | AP 요청 받기 + 상태 방송(UDP 30501·30511) + SD·DoIP 응답 |
-| `hj_veh` | IP 전부 차단 (CAN만 쓰는 방) |
+| `ns_ap` | Gateway로 요청 보내기만: SOME/IP-SD(UDP 30490), SOME/IP 메서드(TCP 30502·30512), DoIP(TCP/UDP 13400) + 받은 요청의 답장 |
+| `ns_gateway` | AP 요청 받기 + 상태 방송(UDP 30501·30511) + SD·DoIP 응답 |
+| `ns_vehicle` | IP 전부 차단 (CAN만 쓰는 방) |
 
 **확인한 것**
 
@@ -119,7 +119,7 @@ ip -n hj_veh link set vxcan_veh up
 | AP → GW TCP 2222 | `timed out` ✅ | 아무 포트나 못 씀 |
 | GW → AP TCP 8080 (먼저 연결) | `timed out` ✅ | 반대 방향 침투 불가 (양쪽 방화벽 이중 방어) |
 | 차량 → GW CAN | 수신 ✅ | 방화벽은 CAN에 영향 없음 |
-| 본체 `nft list tables`에 `hj_fw` 없음 | ✅ | 본체 방화벽은 안 건드림 |
+| 본체 `nft list tables`에 `ns_fw` 없음 | ✅ | 본체 방화벽은 안 건드림 |
 
 ### 5단계: 설치·정리 스크립트
 - `practice/scripts/setup.sh`: 1~4단계를 한 번에. 시작할 때 `cleanup.sh`를 먼저 불러서 **몇 번 돌려도 같은 결과**
@@ -129,7 +129,7 @@ ip -n hj_veh link set vxcan_veh up
 
 **확인한 것**
 - `setup.sh` 2회 연속 실행 → 둘 다 `설치 완료`, 결과 동일 ✅
-- 세 방 장치 구성과 `hj_fw` 방화벽 존재, 본체에는 `hj_fw` 없음 ✅
+- 세 방 장치 구성과 `ns_fw` 방화벽 존재, 본체에는 `ns_fw` 없음 ✅
 - 스크립트로 만든 구성에서 기능 시험(CAN·방화벽) 재확인: ⬜ (진행 예정)
 
 ---

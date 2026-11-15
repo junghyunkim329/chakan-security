@@ -1,5 +1,5 @@
 // Vehicle Gateway DoIP entity and UDS router: DoIP (TCP/UDP 13400) <-> kernel ISO-TP <-> ECU UDS servers.
-// project.md §9.1. Runs in ns_gateway (practice: hj_gw) as a non-root user. One tester connection at a time.
+// project.md §9.1. Runs in ns_gateway as a non-root user. One tester connection at a time.
 //
 // usage: doip_gateway --eth-addr <ipv4> --can-iface <if> [--duration-s <sec>]
 #include <cerrno>

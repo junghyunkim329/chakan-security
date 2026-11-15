@@ -12,7 +12,7 @@ using namespace sil::em;
 namespace {
 
 const std::map<std::string, std::string> VARS = {
-	{"ROOT", "/w"}, {"BIN_DIR", "/w/bin"}, {"RUN_AS", "sil"}, {"NS_AP", "hj_ap"}, {"NS_GW", "hj_gw"}, {"NS_VEH", "hj_veh"},
+	{"ROOT", "/w"}, {"BIN_DIR", "/w/bin"}, {"RUN_AS", "sil"}, {"NS_AP", "ns_ap"}, {"NS_GW", "ns_gateway"}, {"NS_VEH", "ns_vehicle"},
 	{"CAN_VEH_IF", "vxcan_veh"}, {"CAN_GW_IF", "vxcan_gw"}};
 
 bool rejects(const std::string &json, const std::string &expect)
@@ -36,7 +36,7 @@ bool rejects(const std::string &json, const std::string &expect)
 std::string one(const std::string &process_body)
 {
 	return R"({"schema": 1, "processes": [{"name": "engine", "executable": "/w/build/ecu_engine", "args": [], )"
-	       R"("netns": "hj_veh", "user": "sil", "capabilities": [], "depends_on": [], )" +
+	       R"("netns": "ns_vehicle", "user": "sil", "capabilities": [], "depends_on": [], )" +
 	       process_body + "}]}";
 }
 
@@ -53,7 +53,7 @@ int main(int argc, char **argv)
 	CHECK(m.processes[0].args.size() == 2 && m.processes[0].args[1] == "vxcan_veh");
 	CHECK(m.processes[3].depends_on.size() == 3);
 	CHECK(m.processes[3].env.at("VSOMEIP_CONFIGURATION") == "/w/config/vsomeip/gateway.json");
-	CHECK(m.processes[4].netns == "hj_ap");
+	CHECK(m.processes[4].netns == "ns_ap");
 	CHECK(m.policy.heartbeat_period_ns == 500'000'000);
 	CHECK(m.policy.failure_window_ns == 60'000'000'000);
 	for (auto &p : m.processes)

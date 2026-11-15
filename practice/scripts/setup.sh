@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # 연습용 차량 SIL 네트워크 설치 스크립트 (1~4단계를 한 번에)
 #
-#   [hj_ap] ══ veth ══ [hj_gw] ── vxcan ── [hj_veh]
+#   [ns_ap] ══ veth ══ [ns_gateway] ── vxcan ── [ns_vehicle]
 #   10.10.0.10         10.10.0.1  │
-#                                 └─ vxlin ── [hj_body]   (Phase 6 LIN 차체 도메인: Door·Window·Light)
+#                                      └─ vxlin ── [ns_body]   (Phase 6 LIN 차체 도메인: Door·Window·Light)
 #
 # 여러 번 실행해도 결과가 같다: 먼저 cleanup.sh로 지운 뒤 처음부터 다시 만든다.
 # 사용: su - 로 root가 된 뒤  /home/ghwls/work/practice/scripts/setup.sh
@@ -11,10 +11,10 @@
 set -euo pipefail   # 중간에 하나라도 실패하면 즉시 멈춘다
 
 # ---- 이름과 주소 (여기만 바꾸면 전체가 바뀐다) ----
-NS_AP=hj_ap
-NS_GW=hj_gw
-NS_VEH=hj_veh
-NS_BODY=hj_body
+NS_AP=ns_ap
+NS_GW=ns_gateway
+NS_VEH=ns_vehicle
+NS_BODY=ns_body
 ETH_AP=veth_ap;   IP_AP=10.10.0.10/24
 ETH_GW=veth_gw;   IP_GW=10.10.0.1/24
 CAN_GW=vxcan_gw

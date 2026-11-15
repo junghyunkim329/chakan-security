@@ -96,8 +96,8 @@ byte:  0      1      2      3      4      5      6               7
 ### 송신 주기 시험 (2026-11-02 20:41, `docs/results/20261102-204133_ecu-period/report.json`)
 
 **방법**
-- ECU 3개를 차량 방(`hj_veh`)에서 **일반 사용자(nobody)** 로 실행, `vxcan_veh`로 송신
-- Gateway 방(`hj_gw`)의 `vxcan_gw`에서 수신, **커널 수신 시각**으로 간격 측정
+- ECU 3개를 차량 방(`ns_vehicle`)에서 **일반 사용자(nobody)** 로 실행, `vxcan_veh`로 송신
+- Gateway 방(`ns_gateway`)의 `vxcan_gw`에서 수신, **커널 수신 시각**으로 간격 측정
 - 시작 직후 5개는 제외하고 메시지별 **연속 1000개 간격** 분석
 - 받은 모든 메시지를 Python 기준 codec으로 다시 검사 (ID·길이·CRC·예약 비트·valid·범위·counter)
 - 환경: kernel 7.0.0-38-generic, 무부하 VM

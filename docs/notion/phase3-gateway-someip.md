@@ -77,9 +77,9 @@ AP에는 CAN 장치가 없으므로 이 서비스가 AP가 차량 상태를 아�
 ### 2.5 실행 구성
 | namespace | 프로그램 | 비고 |
 | --- | --- | --- |
-| `hj_veh` | `ecu_engine`, `ecu_brake`, `ecu_steering` | Phase 2 |
-| `hj_gw` | `vehicle_gateway` | CAN + Ethernet 둘 다 접근하는 유일한 프로그램 |
-| `hj_ap` | `vehicle_state_consumer` | CAN 장치 없음 |
+| `ns_vehicle` | `ecu_engine`, `ecu_brake`, `ecu_steering` | Phase 2 |
+| `ns_gateway` | `vehicle_gateway` | CAN + Ethernet 둘 다 접근하는 유일한 프로그램 |
+| `ns_ap` | `vehicle_state_consumer` | CAN 장치 없음 |
 
 - 모든 프로그램은 **root가 아닌 계정**으로 실행
 - namespace는 `/tmp`를 공유하므로, vSomeIP 내부 소켓이 섞이지 않게 방마다 다른 `network` 이름 사용
@@ -122,7 +122,7 @@ AP에는 CAN 장치가 없으므로 이 서비스가 AP가 차량 상태를 아�
 ### 4.2 통합 시험 (2026-11-09 11:34, `docs/results/20261109-113440_someip/`)
 
 **방법**
-- `ECU/scripts/run/gateway-someip-test.sh`: ECU 3개(`hj_veh`) → Gateway(`hj_gw`) → AP consumer(`hj_ap`)를 30초 실행, 처음 3초 제외하고 자동 판정
+- `ECU/scripts/run/gateway-someip-test.sh`: ECU 3개(`ns_vehicle`) → Gateway(`ns_gateway`) → AP consumer(`ns_ap`)를 30초 실행, 처음 3초 제외하고 자동 판정
 - 모든 프로그램은 non-root 계정으로 실행. AP 방에는 CAN 장치 없음
 - 순서: ECU 시작 → 1초 뒤 Gateway → 1초 뒤 consumer (consumer가 시작된 시점부터 발견 시간 측정)
 - 환경: kernel 7.0.0-42-generic, 무부하 VM, vSomeIP 3.7.6

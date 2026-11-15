@@ -32,8 +32,8 @@
 
 **③ 해보기**
 ```bash
-ip netns exec hj_gw candump vxcan_gw                    # 터미널 A
-ip netns exec hj_veh cansend vxcan_veh 123#DEADBEEF     # 터미널 B
+ip netns exec ns_gateway candump vxcan_gw                # 터미널 A
+ip netns exec ns_vehicle cansend vxcan_veh 123#DEADBEEF  # 터미널 B
 ```
 
 **④ 질문**

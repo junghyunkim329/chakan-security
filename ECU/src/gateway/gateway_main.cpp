@@ -1,6 +1,6 @@
 // Vehicle Gateway process: CAN (vxcan) -> validation -> state cache -> SOME/IP VehicleState provider,
 // and with --lin-iface the LIN master and SOME/IP BodyControl provider.
-// project.md §4.1, §5.4, §6, §7.1~7.3. Runs in ns_gateway (practice: hj_gw) as a non-root user.
+// project.md §4.1, §5.4, §6, §7.1~7.3. Runs in ns_gateway as a non-root user.
 #include <atomic>
 #include <cerrno>
 #include <chrono>

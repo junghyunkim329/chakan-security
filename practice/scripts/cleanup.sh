@@ -8,7 +8,7 @@ set -euo pipefail
 
 [[ $EUID -eq 0 ]] || { echo "root 권한이 필요합니다 (su - 후 실행)"; exit 1; }
 
-for ns in hj_ap hj_gw hj_veh hj_body; do
+for ns in ns_ap ns_gateway ns_vehicle ns_body; do
 	if ip netns list | awk '{print $1}' | grep -qxF "$ns"; then
 		ip netns delete "$ns"
 		echo "[정리] 방 삭제: $ns"

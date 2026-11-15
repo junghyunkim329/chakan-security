@@ -25,7 +25,7 @@
 Gateway가 **LIN Master**가 되어 10ms 단위 시간표대로 차체 ECU(문·창문·실내등)에 차례로 말을 걸고, 중앙 컴퓨터(AP)의 "창문 열어", "실내등 켜" 요청을 **BodyControl 서비스(SOME/IP)** 로 받아 검사한 뒤 LIN 명령으로 바꿔 전달함.
 
 ```
-[AP] ──SOME/IP BodyControl──> [Gateway: LIN Master] ──LIN 전용선──> [차체 방 hj_body: Door · Window · Light]
+[AP] ──SOME/IP BodyControl──> [Gateway: LIN Master] ──LIN 전용선──> [차체 방 ns_body: Door · Window · Light]
      <── BodyStatusChanged ───                       <── 상태 응답 ───
 ```
 
@@ -52,10 +52,10 @@ Gateway가 **LIN Master**가 되어 10ms 단위 시간표대로 차체 ECU(문·
 ### 3.1 구성 (연습 구성)
 | 방 | 프로그램 | 비고 |
 | --- | --- | --- |
-| `hj_body` (**신규**) | `lin_slave --role door / window / light` | IP 없음, LIN 전용선만 연결, 방화벽 전부 차단 |
-| `hj_gw` | `vehicle_gateway --lin-iface vxlin_gw` | LIN Master + BodyControl 제공 (VehicleState와 같은 프로세스) |
-| `hj_ap` | `body_control_client` | 시험용 SOME/IP 클라이언트, CAN·LIN 접근 없음 |
-| `hj_veh` | `ecu_engine` | 점화 상태 판단용 |
+| `ns_body` (**신규**) | `lin_slave --role door / window / light` | IP 없음, LIN 전용선만 연결, 방화벽 전부 차단 |
+| `ns_gateway` | `vehicle_gateway --lin-iface vxlin_gw` | LIN Master + BodyControl 제공 (VehicleState와 같은 프로세스) |
+| `ns_ap` | `body_control_client` | 시험용 SOME/IP 클라이언트, CAN·LIN 접근 없음 |
+| `ns_vehicle` | `ecu_engine` | 점화 상태 판단용 |
 
 - `practice/scripts/setup.sh`가 방을 **4개** 만들고 Gateway ↔ 차체 방 사이에 LIN 전용선(`vxlin_gw` ↔ `vxlin_body`)을 연결
 
@@ -87,7 +87,7 @@ project.md에 없어서 정한 값. 팀 공식 문서에는 반영하지 않음.
 
 | 항목 | 결정 | 이유 |
 | --- | --- | --- |
-| Slave 위치 | 새 차체 방 `hj_body` | AP가 LIN에 접근 못 하게 (Phase 1과 같은 격리 원칙) |
+| Slave 위치 | 새 차체 방 `ns_body` | AP가 LIN에 접근 못 하게 (Phase 1과 같은 격리 원칙) |
 | LIN 전송 | 전용 vxcan 위에 header(ID 0x001)·response(0x002)·wakeup(0x003)을 실어 보냄 | 물리 LIN 장비 없음. 다른 통신과 섞이지 않는 전용선 |
 | LIN 프로세스 | Gateway 프로세스 안의 LIN Master 스레드 | §4.1 Gateway 구성요소, 점화 상태(CAN)와 BodyControl을 함께 판단 |
 | 응답 대기 | header 후 5ms | 19.2kbit/s에서 3바이트 응답이 약 2~3ms |

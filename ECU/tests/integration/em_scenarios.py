@@ -15,7 +15,7 @@ from pathlib import Path
 
 OUT, ROOT, RUN_AS, BIN_DIR = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4]
 AUDIT, STATUS, RUNDIR = OUT / "audit.jsonl", OUT / "status.json", OUT / "run"
-VARS = {"ROOT": str(ROOT), "BIN_DIR": BIN_DIR, "RUN_AS": RUN_AS, "NS_AP": "hj_ap", "NS_GW": "hj_gw", "NS_VEH": "hj_veh",
+VARS = {"ROOT": str(ROOT), "BIN_DIR": BIN_DIR, "RUN_AS": RUN_AS, "NS_AP": "ns_ap", "NS_GW": "ns_gateway", "NS_VEH": "ns_vehicle",
         "CAN_VEH_IF": "vxcan_veh", "CAN_GW_IF": "vxcan_gw"}
 MEMORY_MB = {"engine": 64, "brake": 64, "steering": 64, "gateway": 1024, "consumer": 1024}
 MS = 1_000_000

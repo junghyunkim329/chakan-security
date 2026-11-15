@@ -15,7 +15,7 @@ bus:
   wakeup_delay_ms: 100          # practice selection: LIN 2.x needs >= 100 ms between wakeup and the first header
   slave_bus_idle_ms: 4000       # practice selection: LIN 2.x slaves treat 4 s bus inactivity as sleep
 
-# LIN frames carried on a dedicated vxcan wire between hj_gw and hj_body (practice selection).
+# LIN frames carried on a dedicated vxcan wire between ns_gateway and ns_body (practice selection).
 # Nothing else uses this wire, so the CAN IDs only mark the LIN frame part.
 encapsulation:
   header_can_id: 0x001          # break + sync + protected identifier: data[0] = PID, DLC 1

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Phase 3 통합 시험: ECU(CAN) -> Gateway(검사·보관·SOME/IP 제공) -> AP(서비스 발견·구독)
 #
-#   hj_veh: ecu_engine, ecu_brake, ecu_steering   --vxcan-->
-#   hj_gw : vehicle_gateway (vSomeIP provider)    --veth/SOME-IP-->
-#   hj_ap : vehicle_state_consumer (CAN 장치 없음)
+#   ns_vehicle: ecu_engine, ecu_brake, ecu_steering   --vxcan-->
+#   ns_gateway: vehicle_gateway (vSomeIP provider)    --veth/SOME-IP-->
+#   ns_ap     : vehicle_state_consumer (CAN 장치 없음)
 #
 # 모든 프로그램은 root가 아닌 작업 폴더 주인 계정으로 실행한다 (project.md §11.1 non-root).
 # 사용 (root, practice/scripts/setup.sh 실행 후):  ECU/scripts/run/gateway-someip-test.sh [초]
@@ -20,10 +20,10 @@ B="$ROOT/build"
 for b in ecu_engine ecu_brake ecu_steering vehicle_gateway vehicle_state_consumer; do
 	[[ -x "$B/$b" ]] || { echo "빌드가 없습니다: $b (scripts/setup/build-vsomeip.sh 후 cmake 다시 빌드)"; exit 1; }
 done
-for ns in hj_ap hj_gw hj_veh; do
+for ns in ns_ap ns_gateway ns_vehicle; do
 	ip netns list | awk '{print $1}' | grep -qxF "$ns" || { echo "$ns 가 없습니다: practice/scripts/setup.sh 먼저"; exit 1; }
 done
-ip -n hj_gw route show 224.0.0.0/4 | grep -q . || { echo "multicast 경로가 없습니다: practice/scripts/setup.sh를 다시 실행"; exit 1; }
+ip -n ns_gateway route show 224.0.0.0/4 | grep -q . || { echo "multicast 경로가 없습니다: practice/scripts/setup.sh를 다시 실행"; exit 1; }
 
 OUT="$ROOT/docs/results/$(date +%Y%m%d-%H%M%S)_someip"
 mkdir -p "$OUT"
@@ -32,15 +32,15 @@ as_user() { local ns=$1; shift; ip netns exec "$ns" runuser -u "$RUN_AS" -- "$@"
 echo "Phase 3 통합 시험 시작: 약 $((DURATION + 6))초 걸립니다. Ctrl+C를 누르지 말고 기다려 주세요."
 pids=()
 for e in engine brake steering; do
-	as_user hj_veh "$B/ecu_$e" --iface vxcan_veh --duration-s $((DURATION + 5)) 2>"$OUT/ecu_$e.log" &
+	as_user ns_vehicle "$B/ecu_$e" --iface vxcan_veh --duration-s $((DURATION + 5)) 2>"$OUT/ecu_$e.log" &
 	pids+=($!)
 done
 sleep 1
-as_user hj_gw env VSOMEIP_CONFIGURATION="$ROOT/config/vsomeip/gateway.json" \
+as_user ns_gateway env VSOMEIP_CONFIGURATION="$ROOT/config/vsomeip/gateway.json" \
 	"$B/vehicle_gateway" --iface vxcan_gw --duration-s $((DURATION + 3)) >"$OUT/gateway.json" 2>"$OUT/gateway.log" &
 pids+=($!)
 sleep 1
-as_user hj_ap env VSOMEIP_CONFIGURATION="$ROOT/config/vsomeip/consumer.json" \
+as_user ns_ap env VSOMEIP_CONFIGURATION="$ROOT/config/vsomeip/consumer.json" \
 	"$B/vehicle_state_consumer" --duration-s "$DURATION" --warmup-s "$WARMUP" >"$OUT/consumer.json" 2>"$OUT/consumer.log" &
 pids+=($!)
 

@@ -3,10 +3,10 @@
 
 usage (root): lin_scenarios.py <out_dir> <repo_root> <run_as_user>
 
-  hj_veh : ecu_engine (ignition for the vehicle-state check)
-  hj_body: lin_slave door/window/light (+ test control sockets), can_capture on the LIN wire
-  hj_gw  : vehicle_gateway --lin-iface (LIN master + BodyControl provider)
-  hj_ap  : body_control_client (SOME/IP client, no CAN/LIN access)
+  ns_vehicle: ecu_engine (ignition for the vehicle-state check)
+  ns_body   : lin_slave door/window/light (+ test control sockets), can_capture on the LIN wire
+  ns_gateway: vehicle_gateway --lin-iface (LIN master + BodyControl provider)
+  ns_ap     : body_control_client (SOME/IP client, no CAN/LIN access)
 """
 import json
 import os
@@ -126,23 +126,23 @@ def inject_bad_header(pid):
     """Put a header with wrong parity on the LIN wire from the Gateway side (root, test only)."""
     py = ("import socket,struct;s=socket.socket(socket.AF_CAN,socket.SOCK_RAW,socket.CAN_RAW);s.bind(('vxlin_gw',));"
           f"s.send(struct.pack('=IB3x8s',1,1,bytes([{pid}])+bytes(7)))")
-    subprocess.run(["ip", "netns", "exec", "hj_gw", "python3", "-I", "-c", py], check=True)
+    subprocess.run(["ip", "netns", "exec", "ns_gateway", "python3", "-I", "-c", py], check=True)
     return time.monotonic()
 
 
 def main():
     RUN.mkdir(parents=True, exist_ok=True)
     os.chown(RUN, *(lambda pw: (pw.pw_uid, pw.pw_gid))(__import__("pwd").getpwnam(RUN_AS)))
-    start("capture", "hj_body", "python3", "-I", ROOT / "ECU/tools/diag/can_capture.py", "vxlin_body", OUT / "lin.jsonl",
+    start("capture", "ns_body", "python3", "-I", ROOT / "ECU/tools/diag/can_capture.py", "vxlin_body", OUT / "lin.jsonl",
           "0x001", "0x002", "0x003")
-    start("engine", "hj_veh", B / "ecu_engine", "--iface", "vxcan_veh")
+    start("engine", "ns_vehicle", B / "ecu_engine", "--iface", "vxcan_veh")
     for role in ("door", "window", "light"):
-        start(f"lin_{role}", "hj_body", B / "lin_slave", "--role", role, "--iface", "vxlin_body", "--control", RUN / f"{role}.sock")
+        start(f"lin_{role}", "ns_body", B / "lin_slave", "--role", role, "--iface", "vxlin_body", "--control", RUN / f"{role}.sock")
     time.sleep(0.5)
-    start("gateway", "hj_gw", B / "vehicle_gateway", "--iface", "vxcan_gw", "--lin-iface", "vxlin_gw",
+    start("gateway", "ns_gateway", B / "vehicle_gateway", "--iface", "vxcan_gw", "--lin-iface", "vxlin_gw",
           env={"VSOMEIP_CONFIGURATION": ROOT / "config/vsomeip/gateway.json"})
     time.sleep(1.0)
-    client = start("client", "hj_ap", B / "body_control_client", env={"VSOMEIP_CONFIGURATION": ROOT / "config/vsomeip/body_client.json"},
+    client = start("client", "ns_ap", B / "body_control_client", env={"VSOMEIP_CONFIGURATION": ROOT / "config/vsomeip/body_client.json"},
                    stdin=subprocess.PIPE)
     threading.Thread(target=client_reader, args=(client,), daemon=True).start()
     try:
@@ -225,7 +225,7 @@ def scenario():
     t = send("light 0")
     r = wait_response(t)
     check(G1, "같은 상황에서 실내등 명령은 허용(0)", code(r) == 0, r)
-    start("engine", "hj_veh", B / "ecu_engine", "--iface", "vxcan_veh")
+    start("engine", "ns_vehicle", B / "ecu_engine", "--iface", "vxcan_veh")
     time.sleep(0.5)
     t = send("window 10")
     r = wait_response(t)
@@ -289,7 +289,7 @@ def scenario():
     stop("client")
     with lines_lock:
         lines.clear()
-    c2 = start("client_untrusted", "hj_ap", B / "body_control_client",
+    c2 = start("client_untrusted", "ns_ap", B / "body_control_client",
                env={"VSOMEIP_CONFIGURATION": ROOT / "config/vsomeip/body_client_untrusted.json"}, stdin=subprocess.PIPE)
     procs["client"] = c2
     threading.Thread(target=client_reader, args=(c2,), daemon=True).start()
