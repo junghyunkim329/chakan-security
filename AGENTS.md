@@ -2,8 +2,8 @@
 
 ## Work locations
 
-- Perform ECU-related work inside the `ecu/` directory.
-- Perform IDS-related work inside the `ids/` directory.
+- Perform ECU-related work inside the `ECU/` directory.
+- Perform IDS-related work inside the `IDS/` directory.
 
 ## Required context before work
 
