@@ -435,7 +435,7 @@ vSomeIP을 사용해 SOME/IP message, Service Discovery, request/response와 eve
 | 항목 | 결정 | 근거 |
 | --- | --- | --- |
 | vSomeIP | 3.7.6 (commit `4187431d`, 2026-09-17). 3.8.0은 공개 5일이라 제외 | §11.1 버전 고정. 3.7 계열 최신 패치 |
-| Boost | Ubuntu 패키지 1.90.0-6ubuntu1을 `apt-get download`로 받아 `third_party/boost-root`에 압축만 풂. SHA-256은 `third_party/debs/SHA256SUMS` | 서버 시스템 패키지를 바꾸지 않기 위함 |
+| Boost | Ubuntu amd64 패키지 1.90.0-6ubuntu1. `ECU/config/dependencies/boost-debs.manifest`에 패키지명·버전·architecture·파일명·크기·SHA-256 사전 고정. 격리 staging에서 APT 다운로드 후 전체 파일 집합·digest·Debian metadata 검증, 명시 목록만 새 root에 추출하고 Linux renameat2로 원자 교체. 매 빌드마다 검증하며 기존 root 존재로 우회하지 않음 | 서버 패키지를 변경하지 않으면서 승인된 빌드 입력만 사용 |
 | 설치 위치 | `third_party/vsomeip` (작업 폴더 안, root 불필요). `scripts/setup/build-vsomeip.sh` | 같은 이유 |
 | 이번 범위 | VehicleState(0x1000)만. BodyControl(0x1100)은 LIN(Phase 6)과 함께 | BodyControl 명령은 LIN Master가 있어야 동작 |
 | 수신 검사 위치 | Gateway가 Phase 2 codec을 그대로 사용 (`CanInputValidator`). 29-bit ID·RTR·error frame은 `ERR_FRAME_FORMAT`으로 먼저 거부 | §5.1 Classical 11-bit만 사용 |
@@ -452,6 +452,10 @@ vSomeIP을 사용해 SOME/IP message, Service Discovery, request/response와 eve
 | 잘못된 요청 | 비어 있지 않은 `GetSnapshot` 요청은 `E_MALFORMED_MESSAGE`로 거부하고 security event 기록 | §7.2 |
 
 알려진 한계: CRC와 counter를 맞춘 범위 안의 위조 frame은 Gateway를 통과한다(시험 `test_forged_frame_is_accepted_known_limit`). 진위성 검증(R155 Annex 5 M10, AUTOSAR SecOC 수준)은 구현하지 않는다.
+
+2026-11-23 Issue #7 공급망 통제 변경: 실제 구현은 `ECU/scripts/setup/`에 두고 기존 루트 build 명령은 호환 진입점으로 유지한다. 신뢰 경계는 검토된 Git manifest와 host APT archive keyring이며, 빌드 사용자·host는 신뢰한다. 기존 `third_party/debs`와 추출 root를 신뢰 입력으로 재사용하지 않는다. 검증 실패 시 빌드를 중단하고 기존 root를 보존한다. archive header timestamp가 유지되므로 기존 object가 잘못 재사용되지 않도록 vSomeIP은 매번 `--clean-first`로 재컴파일한다(증분 빌드 속도 대신 입력 추적성 우선). 이는 **실차 탑재 소프트웨어의 양산 빌드·공급망 통제와의 유사성**을 위한 프로젝트 선택이며 ECU에서 APT를 실행하는 모델이 아니다.
+
+근거: 지정 R155 원문+Amendment 1~3 누적본 5.1.1(a), 7.2.2.5, 7.3.2의 공급망 정보 검증·공급자 의존성·공급자 위험 관리, KISA ISO/SAE 21434 기반 매뉴얼(2025-12-31) 3-3-2 22쪽의 오픈소스 출처·서명 검증. [AGL](https://docs.automotivelinux.org/en/master/04_Developer_Guides/02_AGL_Platform_Development/01_AGL_Yocto_Layers/01_Overview/)의 Yocto/OpenEmbedded 구조와 [Yocto](https://docs.yoctoproject.org/dev-manual/new-recipe.html#fetching-code)의 recipe 사전 checksum·분리 WORKDIR에 대응한다. 규정이 특정 SHA-256 manifest나 staging 구현을 직접 지정하는 것은 아니다. [APT](https://manpages.ubuntu.com/manpages/noble/man8/apt-secure.8.html)의 archive 인증 위에 프로젝트 승인 byte 목록을 추가한다. 양산 내부 artifact repository, OEM 승인·키 관리, SBOM 전체, 서명된 build provenance 및 완전 hermetic build는 이 SIL의 검증 범위 밖이다. R156 7.2.1.1은 배포 업데이트의 진위성·무결성 보호로서 별도 후단 통제다. 상세 통제 매핑은 `ECU/docs/superpowers/specs/2026-11-23-boost-package-integrity-design.md`에 기록한다.
 
 구현: `src/gateway/`(입력 검증, state cache, payload, `vehicle_gateway`), `src/adaptive/vehicle-state/`(`vehicle_state_consumer`), `config/services/vehicle_state.yaml`, `tools/codegen/gen_services.py`, `config/vsomeip/`, 시험 `tests/unit/test_{can_input_validator,vehicle_state_cache,vehicle_state_payload}.cpp`, 통합 `scripts/run/gateway-someip-test.sh`.
 
