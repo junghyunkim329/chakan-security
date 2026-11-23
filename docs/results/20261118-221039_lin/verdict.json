@@ -1,0 +1,233 @@
+{
+  "pass": false,
+  "results": [
+    {
+      "group": "명령·응답",
+      "name": "AP가 BodyControl 서비스 발견",
+      "pass": false,
+      "value": "10029 ms"
+    },
+    {
+      "group": "명령·응답",
+      "name": "초기 상태: 문 닫힘·중앙 잠금, 창문 0, 실내등 꺼짐, 모두 fresh",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "SetWindowPosition(50) → accepted(0)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "창문이 5%씩 움직여 50 도달 (50 ms마다 5% → 약 0.5 s)",
+      "pass": false,
+      "value": "None s"
+    },
+    {
+      "group": "명령·응답",
+      "name": "event에서 창문 위치가 증가만 함 (100 ms event 사이 최대 10%)",
+      "pass": false,
+      "value": "[]"
+    },
+    {
+      "group": "명령·응답",
+      "name": "SetInteriorLight(1) → accepted(0), 실내등 켜짐",
+      "pass": false,
+      "value": "None, None s"
+    },
+    {
+      "group": "명령·응답",
+      "name": "Door ECU 입력(앞좌 문 열림)이 event에 반영",
+      "pass": false,
+      "value": "None s"
+    },
+    {
+      "group": "명령·응답",
+      "name": "잘못된 인자 (범위 밖 101) → invalid argument(1)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "잘못된 인자 (payload 2 byte) → invalid argument(1)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "잘못된 인자 (실내등 2) → invalid argument(1)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "장애물 주입: 창문 정지·obstruction·fault 표시",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "초당 5회 초과 요청 거부 (state rejected 2)",
+      "pass": false,
+      "value": "[]"
+    },
+    {
+      "group": "명령·응답",
+      "name": "엔진 메시지 없음(점화 정보 stale) → 창문 명령 거부(2)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "같은 상황에서 실내등 명령은 허용(0)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "엔진 재개 후 창문 명령 허용(0)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "응답 누락",
+      "name": "Window 응답 중단 → 3회 누락 후 통신 오류·not fresh 표시",
+      "pass": false,
+      "value": "None s, None"
+    },
+    {
+      "group": "응답 누락",
+      "name": "통신 오류 중 창문 명령 → LIN timeout(3)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "응답 누락",
+      "name": "다른 Slave(Door·Light)는 정상 유지",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "응답 누락",
+      "name": "Light checksum 오류 응답 → 3회 후 통신 오류",
+      "pass": false,
+      "value": "None s"
+    },
+    {
+      "group": "복구",
+      "name": "Window 응답 재개 → 정상 3회 후 복구·fresh",
+      "pass": false,
+      "value": "None s"
+    },
+    {
+      "group": "복구",
+      "name": "복구 후 창문 명령 accepted(0)·동작",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "복구",
+      "name": "Light checksum 정상화 → 복구",
+      "pass": false,
+      "value": "None s"
+    },
+    {
+      "group": "복구",
+      "name": "복구 후 실내등 명령 accepted(0)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "5초간 명령·상태 변화 없음 → LIN sleep",
+      "pass": false,
+      "value": "None s"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "sleep 중 명령 → wakeup 후 accepted(0)",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "다른 OS 주체가 실행 중인 신뢰 라우팅 매니저를 대리 사용하지 못함",
+      "pass": false,
+      "value": "probe=no security rejection evidence, response=None, window=None->None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "신뢰 OS 주체는 대체 client ID 0x2FFF로도 정상 요청",
+      "pass": false,
+      "value": "None"
+    },
+    {
+      "group": "명령·응답",
+      "name": "승인 client ID 0x2002를 사용해도 비신뢰 OS 주체는 거부",
+      "pass": false,
+      "value": "probe=no security rejection evidence, response=None, window=None->None"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "모든 header의 PID parity가 표준 표와 일치 (주입한 1건 제외)",
+      "pass": true,
+      "value": "358 headers"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "스케줄 순서 0x11→0x12→0x13→0x14→0x10→0x11→0x12 반복",
+      "pass": true,
+      "value": "['0x11', '0x92', '0xd3', '0x14', '0x50', '0x11', '0x92', '0x11']"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "slot 간격 10 ms (±3), idle 구간 40 ms (±3)",
+      "pass": true,
+      "value": "min 9.2 max 40.5 ms"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "checksum 오류는 손상 주입 구간에만 (enhanced checksum)",
+      "pass": false,
+      "value": "오류 0 / 339 응답, 구간 밖 0"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "parity가 틀린 header(0x10, 올바른 값 0x50)에는 Door가 응답하지 않음",
+      "pass": true,
+      "value": "주입 header 있음, 다음 frame None"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "Door Slave가 parity 오류 header를 기록",
+      "pass": true,
+      "value": "[lin_door] headers=357 bad_parity=1 responses=51 commands=0 bad_checksum=0 wakeups=0"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "sleep 동안 LIN 버스 header 0개",
+      "pass": true,
+      "value": "0 headers in 1.00 s"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "wakeup 신호 후 100 ms 이상 지나 0 ms slot(0x11)부터 재시작",
+      "pass": false,
+      "value": "[] ms, PID None"
+    },
+    {
+      "group": "LIN 프로토콜",
+      "name": "실내등 fade: 100 ms마다 10%씩 밝아짐",
+      "pass": false,
+      "value": "[]"
+    },
+    {
+      "group": "명령·응답",
+      "name": "BodyControl veth traffic은 ESP로 보호되고 clear TCP/30512가 없음",
+      "pass": false,
+      "value": "esp=False, clear=0"
+    }
+  ]
+}

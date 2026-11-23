@@ -74,6 +74,19 @@
 
 확인을 요청할 때는 미정 항목, 지금 결정이 필요한 이유, 영향받는 작업, 현실적인 선택지와 권장안을 제시한다. 임시값, OEM 요구사항 또는 개발 편의상의 기본값을 조용히 만들어 사용하지 않는다. 미정 결정과 독립적인 작업만 계속할 수 있다.
 
+### 2.2 기준 차량과 적용 범위 (2026-11-23 사용자 확정)
+
+차량 도메인 ECU는 **Toyota RAV4 2019~2021 가솔린 모델의 공개 CAN 정보를 참고하여 만든다.** 엔진·제동·조향·변속기 등 내연기관 차량의 역할을 유지하면서 공개 통신 구현과 신호 정의를 대조할 수 있어 이 차종군을 기준으로 선택했다. Hybrid와 Prime은 이 기준에 포함하지 않는다.
+
+프로젝트 구성은 **“RAV4 가솔린의 공개 CAN 정보를 참고한 차량 도메인 + 프로젝트 자체 Adaptive/Gateway 계층”**으로 정의한다. 무료 Linux SIL, AUTOSAR Adaptive 구조 학습, CAN·LIN·Ethernet 연동 및 향후 IDPS 검증이라는 프로젝트 목표를 유지한다.
+
+- 공개 구현 근거: [commaai/opendbc Toyota 차량 정의](https://github.com/commaai/opendbc/blob/master/opendbc/car/toyota/values.py)의 `TOYOTA_RAV4_TSS2`와 [Toyota 통신 구현](https://github.com/commaai/opendbc/tree/master/opendbc/car/toyota)을 출발점으로 사용한다. 이는 커뮤니티 공개 구현이며 Toyota가 제공한 전체 OEM 사양서나 DBC로 취급하지 않는다.
+- 적용 방법: 해당 가솔린 구성에 적용됨이 확인된 CAN ID, 신호 배치, 단위, counter/checksum 및 송수신 동작을 출처와 함께 차량 도메인에 반영한다. 적용 전 공개 자료의 commit, 파일, 대상 연식·시장·구성 및 검증 근거를 고정하고 요구사항·코드·시험에 연결한다.
+- 확인 불가 항목: 전체 차체·LIN 명세, ECU 내부 권한 정책, 보안키, OEM 진단·타이밍·안전 요구사항은 공개 CAN 정보만으로 확정하지 않는다. 구체적인 연식·시장·트림·ECU/firmware 차이가 구현에 영향을 주면 §2.1에 따라 사용자 결정을 받은 뒤 적용한다.
+- 프로젝트 자체 계층: Adaptive 애플리케이션, SOME/IP 서비스, Gateway 변환, LIN 시뮬레이션과 DoIP 진단은 해당 RAV4에서의 사용이 별도로 확인되기 전까지 교육용 프로젝트 설계로 분류한다. 전체 차량 네트워크·보안 구조가 RAV4와 같다고 주장하지 않는다.
+- 현재 구현과의 관계: 이 절은 후속 구현의 기준 차량 선택을 기록한 것이며, CAN 정의·configuration·코드의 RAV4 전환을 완료했다는 뜻은 아니다. §5~§11의 기존 ID·배치·주기·주소·포트·권한·보안 통제와 합격 기준은 각 항목의 근거를 확인하고 기준서를 갱신하기 전까지 기존 프로젝트 선택값으로 유지한다. 현재 BodyControl의 UID·vSomeIP credential·IPsec 역시 RAV4의 실제 통제로 표현하지 않는다.
+- 후속 검증: CAN 정의 변경 시 codec·counter/checksum·입력 검증·ECU 주기 시험, Gateway payload·SOME/IP 연동, 진단 및 영향받는 LIN 시나리오와 IDS fixture를 재검증한다. 차종별 외부 데이터셋의 IDS 평가 결과와 이 SIL의 실행 결과를 구분하고, IDPS 추가 전후 비교는 동일한 구성·시나리오·관측 지점을 기준으로 수행한다.
+
 ## 3. 실행 환경
 
 ### 3.1 가상 머신
@@ -407,7 +420,7 @@ Method 요청은 아래 요청자 권한 경계, 범위, 차량 상태와 rate l
 
 BodyControl 요청자 권한은 SOME/IP client ID로 판단하지 않는다. client ID는 request/response routing과 correlation에만 사용하며 애플리케이션 principal이 아니다. 연습 구성은 다음 계층을 모두 적용한다.
 
-- 배포가 지정한 전용 non-root `BODY_CONTROL_UID`와 `BODY_CONTROL_GID`로 BodyControl client를 실행하고 supplementary group은 모두 제거한다. 두 값은 다른 AP 프로세스의 workspace UID/GID와 달라야 한다. 숫자값은 OEM/target 배포 항목이므로 저장소 기본값을 두지 않는다.
+- 배포가 지정한 전용 non-root `BODY_CONTROL_UID`와 `BODY_CONTROL_GID`로 BodyControl client를 실행하고 supplementary group은 모두 제거한다. 두 값은 다른 AP 프로세스의 workspace UID/GID와 달라야 한다. 숫자값은 OEM/target 배포 항목이므로 저장소 기본값을 두지 않는다. 2026-11-23 실행 편의 변경: 현재 배포에 사용자가 지정한 `vehicle-body-control` 계정의 UID와 primary GID를 setup에서 자동 조회한다. 계정이 없으면 중단하며 계정을 자동 생성하지 않는다. 명시적인 UID/GID 쌍은 기존처럼 우선 적용하고 한쪽만 지정하면 거부한다. LIN 시험은 setup이 기록한 principal을 기본으로 사용하고 명시한 값이 다르면 중단한다. 신뢰 경계와 포트·주소는 유지하며, 계정 조회·미존재·부분 지정·명시적 지정 및 기존 시험을 재검증한다.
 - 개발자 home은 전용 principal에게 열지 않는다. 시나리오 runner가 client와 workspace-local shared library만 root-owned `/run/chakan-security/body-runtime`에 설치하여 배포 이미지 경계를 모사한다.
 - vSomeIP local security의 UNIX credential 검사와 routing credential을 켜고 UDS 권한을 `0600`으로 제한한다. 실행 시 root-owned `/run/chakan-security/vsomeip`에 credential-bound 설정을 생성하여 다른 AP 프로세스가 routing manager를 대리 사용하지 못하게 한다.
 - `ns_ap` nftables는 전용 UID가 소유하고 required XFRM policy가 결합된 socket만 TCP/30512 송신을 허용한다. XFRM 변환 뒤 outer ESP에는 socket UID가 없으므로 AP→Gateway 고정 주소쌍의 ESP만 별도 송신 허용한다.
@@ -417,6 +430,8 @@ BodyControl 요청자 권한은 SOME/IP client ID로 판단하지 않는다. cli
 연습 구성의 IPsec AEAD key는 setup 때마다 난수로 생성하여 setup process argument와 두 namespace의 kernel state에서만 일시 사용하고 파일이나 결과에 저장하지 않는다. 이는 보호된 ECU 간 transport와 principal 분리를 검증하기 위한 SIL 선택이며 OEM PKI, 장기 key provisioning/rotation, AUTOSAR IAM 또는 양산 key lifecycle을 구현했다는 주장이 아니다. 전용 UID/GID compromise, root/CAP_NET_ADMIN, Gateway namespace compromise와 LIN wire 직접 접근은 이 요청자 위협모델 밖이다. 근거는 R155 누적 Annex 5의 impersonation·M9·M10 대응, AUTOSAR SOME/IP의 routing identifier 성격, Adaptive IAM의 caller identity/policy 분리다.
 
 2026-11-23 Issue #1 검증: `docs/results/20261123-181657_lin/summary.md`와 `verdict.json`에서 38/38 통과. 전용 UID의 기존 client ID와 대체 ID 요청이 성공하고 다른 UID의 routing manager 시작 시도는 lock 권한 오류로 차단됐다. veth에는 ESP가 관찰되고 평문 TCP/30512는 관찰되지 않았다. 송신 ESP 허용 누락으로 발생했던 연결 장애도 이 실행에서 해소됐다. 실제 proxy mode와 vSomeIP을 거치지 않는 직접 socket 접근의 추가 시험은 후속 보강 대상으로 남긴다.
+
+2026-11-23 Issue #8 시험 보강 구현: 기존 lock 오류 기반 판정을 직접 TCP socket의 AP UID 방화벽 trace·counter와 실제 Proxy mode의 실행 중 routing UDS에 대한 `connect()` 권한 오류 확인으로 교체한다. Gateway의 비보호 TCP/30512와 UDP/30511 method 거부는 격리된 `ns_ap/veth_ap`의 시험 전용 root L2 주입으로 별도 확인한다. 이 주입은 비신뢰 non-root 주체의 권한이나 공격 성공을 의미하지 않는다. 실제 방화벽·XFRM 정책은 변경하지 않고 관찰용 nftrace table·proxy 설정만 만들었다가 제거하며 정책 동일성과 제거 여부를 판정에 포함한다. 정상 요청의 ESP 검사는 의도적인 평문 주입 전후 구간에서 각각 수행한다. 상세 실행·판정 기준은 `ECU/docs/evidence/issue-8-boundary-regression.md`에 기록한다. 첫 root 실행 `docs/results/20261123-235144_lin/`은 40/43 통과로 실패했다. Proxy 연결 거부 두 건은 확인했으나 시험 도구의 XFRM 텍스트 출력 JSON 해석 오류로 직접 socket·Gateway 판정과 복원 확인이 끝나지 않았다. 해당 오류를 수정한 후 사용자 root 재실행 `docs/results/20261123-235545_lin/`에서 **44/44 통과**, 상세 probe·복원 보고 10개 통과와 실제 trace·전후 정책 파일을 확인했다. 단위 테스트 18개와 CTest 16개도 통과했다. Issue #8의 SIL 시험 보강 완료 기준을 충족하며 실차 보안 검증을 주장하지 않는다.
 
 `BodyStatusChanged` payload는 network byte order로 `sequence(uint32)`, `timestamp_us(uint64)`, `door_bits(uint8)`, `window_position(uint8, 0~100)`, `light_state(uint8, 0/1)`, `status_flags(uint8)`, `freshness(uint8)`, `reserved(3-byte, 0)` 순서의 20-byte다.
 
