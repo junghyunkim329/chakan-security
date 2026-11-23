@@ -6,6 +6,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 RUN_AS=$(stat -c %U "$ROOT")
+: "${BODY_CONTROL_UID:?BODY_CONTROL_UID must be the deployment-assigned BodyControl UID}"
+: "${BODY_CONTROL_GID:?BODY_CONTROL_GID must be the deployment-assigned BodyControl GID}"
 
 [[ $EUID -eq 0 ]] || { echo "root 권한이 필요합니다 (su - 후 실행)"; exit 1; }
 for b in ecu_engine lin_slave vehicle_gateway body_control_client; do
@@ -14,6 +16,23 @@ done
 for ns in ns_ap ns_gateway ns_vehicle ns_body; do
 	ip netns list | awk '{print $1}' | grep -qxF "$ns" || { echo "$ns 가 없습니다: practice/scripts/setup.sh 먼저"; exit 1; }
 done
+[[ -r /run/chakan-security/body-control-principal ]] || {
+	echo "BodyControl runtime principal이 없습니다: BODY_CONTROL_UID/GID와 함께 practice/scripts/setup.sh를 다시 실행"; exit 1;
+}
+read -r SETUP_BODY_UID SETUP_BODY_GID </run/chakan-security/body-control-principal
+[[ $BODY_CONTROL_UID == "$SETUP_BODY_UID" && $BODY_CONTROL_GID == "$SETUP_BODY_GID" ]] || {
+	echo "현재 BODY_CONTROL_UID/GID가 setup에 사용한 principal과 다릅니다"; exit 1;
+}
+
+# 전용 principal은 개발자 home을 탐색할 권한이 없다. 양산 배포 이미지처럼 필요한 client와
+# workspace-local shared library만 root-owned runtime directory에 설치한다.
+BODY_RUNTIME=/run/chakan-security/body-runtime
+install -d -m 0755 "$BODY_RUNTIME/bin" "$BODY_RUNTIME/lib"
+install -m 0755 "$ROOT/build/body_control_client" "$BODY_RUNTIME/bin/body_control_client"
+python3 -I "$ROOT/ECU/tools/security/stage_vsomeip_runtime.py" \
+	"$ROOT/third_party/vsomeip/lib" \
+	"$ROOT/third_party/boost-root/usr/lib/x86_64-linux-gnu" \
+	"$BODY_RUNTIME/lib"
 
 OUT="$ROOT/docs/results/$(date +%Y%m%d-%H%M%S)_lin"
 mkdir -p "$OUT"
@@ -21,7 +40,7 @@ chown "$RUN_AS": "$OUT"   # 캡처 프로그램(일반 사용자)이 여기에 �
 echo "Phase 6 LIN 시나리오 시험 시작: 약 40초 걸립니다. Ctrl+C를 누르지 말고 기다려 주세요."
 
 rc=0
-python3 -I "$ROOT/ECU/tests/integration/lin_scenarios.py" "$OUT" "$ROOT" "$RUN_AS" || rc=$?
+python3 -I "$ROOT/ECU/tests/integration/lin_scenarios.py" "$OUT" "$ROOT" "$RUN_AS" "$BODY_CONTROL_UID" "$BODY_CONTROL_GID" || rc=$?
 chown -R "$RUN_AS": "$OUT"
 echo "결과: $OUT/summary.md (종료코드 $rc)"
 exit "$rc"

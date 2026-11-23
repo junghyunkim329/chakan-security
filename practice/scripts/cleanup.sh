@@ -16,3 +16,19 @@ for ns in ns_ap ns_gateway ns_vehicle ns_body; do
 		echo "[정리] 없음, 건너뜀: $ns"
 	fi
 done
+
+# 이 practice 구성이 생성한 비밀 없는 runtime identity/config만 정리한다.
+rm -f /run/chakan-security/body-control-principal \
+	/run/chakan-security/vsomeip/body_client.json \
+	/run/chakan-security/vsomeip/body_client_alt_id.json \
+	/run/chakan-security/body-runtime/bin/body_control_client
+if [[ -d /run/chakan-security/body-runtime/lib ]]; then
+	while IFS= read -r runtime_library; do
+		rm -f -- "$runtime_library"
+	done < <(find /run/chakan-security/body-runtime/lib -maxdepth 1 -type f -print)
+fi
+rmdir /run/chakan-security/vsomeip \
+	/run/chakan-security/body-runtime/bin \
+	/run/chakan-security/body-runtime/lib \
+	/run/chakan-security/body-runtime \
+	/run/chakan-security 2>/dev/null || true

@@ -1,6 +1,6 @@
 # Adaptive Vehicle Cybersecurity SIL
 
-문서 기준일: 2026-11-17
+문서 기준일: 2026-11-23
 
 설계 기준: AUTOSAR Adaptive Platform R25-11 참고
 
@@ -403,7 +403,20 @@ Event에는 Gateway가 검증한 최신 차량 상태, 각 신호의 validity/fr
 - UDP event port: `30511`
 - TCP method port: `30512`
 
-Method 요청은 allowlist, 범위, 차량 상태와 rate limit을 통과한 뒤에만 LIN command로 변환한다. 서비스 ID, method ID와 포트는 프로젝트 선택값이다.
+Method 요청은 아래 요청자 권한 경계, 범위, 차량 상태와 rate limit을 통과한 뒤에만 LIN command로 변환한다. 서비스 ID, method ID와 포트는 프로젝트 선택값이다.
+
+BodyControl 요청자 권한은 SOME/IP client ID로 판단하지 않는다. client ID는 request/response routing과 correlation에만 사용하며 애플리케이션 principal이 아니다. 연습 구성은 다음 계층을 모두 적용한다.
+
+- 배포가 지정한 전용 non-root `BODY_CONTROL_UID`와 `BODY_CONTROL_GID`로 BodyControl client를 실행하고 supplementary group은 모두 제거한다. 두 값은 다른 AP 프로세스의 workspace UID/GID와 달라야 한다. 숫자값은 OEM/target 배포 항목이므로 저장소 기본값을 두지 않는다.
+- 개발자 home은 전용 principal에게 열지 않는다. 시나리오 runner가 client와 workspace-local shared library만 root-owned `/run/chakan-security/body-runtime`에 설치하여 배포 이미지 경계를 모사한다.
+- vSomeIP local security의 UNIX credential 검사와 routing credential을 켜고 UDS 권한을 `0600`으로 제한한다. 실행 시 root-owned `/run/chakan-security/vsomeip`에 credential-bound 설정을 생성하여 다른 AP 프로세스가 routing manager를 대리 사용하지 못하게 한다.
+- `ns_ap` nftables는 전용 UID가 소유하고 required XFRM policy가 결합된 socket만 TCP/30512 송신을 허용한다. XFRM 변환 뒤 outer ESP에는 socket UID가 없으므로 AP→Gateway 고정 주소쌍의 ESP만 별도 송신 허용한다.
+- TCP/30512는 `ns_ap`와 `ns_gateway` 사이의 XFRM/IPsec transport policy로 보호한다. Gateway nftables는 AP→Gateway 고정 주소쌍의 outer ESP와 해당 inbound policy를 통과한 요청만 허용하며, 응답 방향 outer ESP도 Gateway→AP 고정 주소쌍으로만 송신 허용한다.
+- Gateway 애플리케이션은 UDP/30511로 들어온 method 요청을 거부하고 TCP reliable request만 처리한다. 그 뒤 payload·범위·차량 상태·rate limit·LIN 상태를 검사하며 `req->get_client()`를 권한 판단에 사용하지 않는다.
+
+연습 구성의 IPsec AEAD key는 setup 때마다 난수로 생성하여 setup process argument와 두 namespace의 kernel state에서만 일시 사용하고 파일이나 결과에 저장하지 않는다. 이는 보호된 ECU 간 transport와 principal 분리를 검증하기 위한 SIL 선택이며 OEM PKI, 장기 key provisioning/rotation, AUTOSAR IAM 또는 양산 key lifecycle을 구현했다는 주장이 아니다. 전용 UID/GID compromise, root/CAP_NET_ADMIN, Gateway namespace compromise와 LIN wire 직접 접근은 이 요청자 위협모델 밖이다. 근거는 R155 누적 Annex 5의 impersonation·M9·M10 대응, AUTOSAR SOME/IP의 routing identifier 성격, Adaptive IAM의 caller identity/policy 분리다.
+
+2026-11-23 Issue #1 검증: `docs/results/20261123-181657_lin/summary.md`와 `verdict.json`에서 38/38 통과. 전용 UID의 기존 client ID와 대체 ID 요청이 성공하고 다른 UID의 routing manager 시작 시도는 lock 권한 오류로 차단됐다. veth에는 ESP가 관찰되고 평문 TCP/30512는 관찰되지 않았다. 송신 ESP 허용 누락으로 발생했던 연결 장애도 이 실행에서 해소됐다. 실제 proxy mode와 vSomeIP을 거치지 않는 직접 socket 접근의 추가 시험은 후속 보강 대상으로 남긴다.
 
 `BodyStatusChanged` payload는 network byte order로 `sequence(uint32)`, `timestamp_us(uint64)`, `door_bits(uint8)`, `window_position(uint8, 0~100)`, `light_state(uint8, 0/1)`, `status_flags(uint8)`, `freshness(uint8)`, `reserved(3-byte, 0)` 순서의 20-byte다.
 
@@ -433,7 +446,7 @@ vSomeIP을 사용해 SOME/IP message, Service Discovery, request/response와 eve
 | Gateway 상태 | 모든 PDU를 한 번 이상 정상 수신 전 `Startup`, 하나라도 freshness가 FRESH가 아니거나 연속 오류 ≥ 3이면 `Degraded`, 아니면 `Running`, 종료 시 `Shutdown` | §8.1 상태 목록 |
 | payload timestamp | Gateway가 payload에 쓰인 PDU 중 가장 최근 정상 frame을 `read()`한 시각 (CLOCK_MONOTONIC, µs) | §7.2 "source timestamp" |
 | 지연 측정 | AP consumer가 event를 받은 시각 − payload timestamp. 같은 VM이라 monotonic clock 공유. "발행"까지가 아니라 "수신"까지이므로 §15.2보다 엄격 | §15.2 p99 50ms |
-| 실행 계정 | Gateway·consumer·ECU 모두 작업 폴더 주인 계정(non-root). `nobody`는 작업 폴더의 vSomeIP 라이브러리를 읽을 수 없음 | §11.1 non-root |
+| 실행 계정 | Phase 3 Gateway·VehicleState consumer·ECU는 작업 폴더 주인 계정(non-root). BodyControl은 §7.3의 별도 배포 UID/GID를 사용 | §11.1 non-root와 BodyControl 요청자 분리 |
 | vSomeIP local socket | namespace마다 다른 `network` 이름(`vsomeip-sil-gateway`, `vsomeip-sil-ap`) | namespace는 `/tmp` 파일을 공유하므로 routing manager 충돌 방지 |
 | SD initial delay | 10~100ms 범위만 설정. vSomeIP가 범위 안에서 난수로 고르며 seed 고정 불가 | §7.1 "결정적 seed"는 vSomeIP 설정으로 구현 불가 → 한계로 기록 |
 | 잘못된 요청 | 비어 있지 않은 `GetSnapshot` 요청은 `E_MALFORMED_MESSAGE`로 거부하고 security event 기록 | §7.2 |

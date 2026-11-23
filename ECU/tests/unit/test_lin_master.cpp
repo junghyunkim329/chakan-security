@@ -144,24 +144,24 @@ void test_sleep_and_wakeup()
 void test_body_control_policy()
 {
 	Bus b;
-	body::BodyControl bc({0x2002}, 5, 500 * MS);
+	body::BodyControl bc(5, 500 * MS);
 	b.run(200);
 	std::uint64_t token = 1;
 
-	auto d = bc.request(body::kSetWindowPosition, 0x2FFF, {10}, b.now, true, b.master, token++);
+	auto d = bc.request(body::kSetWindowPosition, false, {10}, b.now, true, b.master, token++);
 	CHECK(!d.pending && d.code == body::kStateRejected && !d.security_event.empty());
-	d = bc.request(body::kSetWindowPosition, 0x2002, {101}, b.now, true, b.master, token++);
+	d = bc.request(body::kSetWindowPosition, true, {101}, b.now, true, b.master, token++);
 	CHECK(!d.pending && d.code == body::kInvalidArgument);
-	d = bc.request(body::kSetWindowPosition, 0x2002, {10, 0}, b.now, true, b.master, token++);
+	d = bc.request(body::kSetWindowPosition, true, {10, 0}, b.now, true, b.master, token++);
 	CHECK(!d.pending && d.code == body::kInvalidArgument);
-	d = bc.request(body::kSetInteriorLight, 0x2002, {2}, b.now, true, b.master, token++);
+	d = bc.request(body::kSetInteriorLight, true, {2}, b.now, true, b.master, token++);
 	CHECK(d.code == body::kInvalidArgument);
-	d = bc.request(body::kSetWindowPosition, 0x2002, {10}, b.now, false, b.master, token++);
+	d = bc.request(body::kSetWindowPosition, true, {10}, b.now, false, b.master, token++);
 	CHECK(!d.pending && d.code == body::kStateRejected); // ignition off / unknown
 
 	// accepted after the slave confirms the command
 	const std::uint64_t t = token++;
-	d = bc.request(body::kSetWindowPosition, 0x2002, {30}, b.now, true, b.master, t);
+	d = bc.request(body::kSetWindowPosition, true, {30}, b.now, true, b.master, t);
 	CHECK(d.pending);
 	std::vector<body::Completion> done;
 	for (int i = 0; i < 200 && done.empty(); i++) {
@@ -173,19 +173,19 @@ void test_body_control_policy()
 	// rate limit: 5 window requests per second (one used above, one rejected for ignition counts too)
 	int limited = 0;
 	for (int i = 0; i < 6; i++)
-		limited += bc.request(body::kSetWindowPosition, 0x2002, {40}, b.now, true, b.master, token++).code == body::kStateRejected;
+		limited += bc.request(body::kSetWindowPosition, true, {40}, b.now, true, b.master, token++).code == body::kStateRejected;
 	CHECK(limited >= 1);
 	b.run(1100);
 	bc.poll(b.now, b.master);
 	// the light method has its own budget
-	CHECK(bc.request(body::kSetInteriorLight, 0x2002, {1}, b.now, true, b.master, token++).pending);
+	CHECK(bc.request(body::kSetInteriorLight, true, {1}, b.now, true, b.master, token++).pending);
 
 	// slave goes silent after the request: no confirmation -> LIN timeout
 	b.run(1100);
 	bc.poll(b.now, b.master);
 	sil_lin_slave_control(&b.window, "mute 1");
 	const std::uint64_t lost = token++;
-	CHECK(bc.request(body::kSetWindowPosition, 0x2002, {60}, b.now, true, b.master, lost).pending);
+	CHECK(bc.request(body::kSetWindowPosition, true, {60}, b.now, true, b.master, lost).pending);
 	done.clear();
 	for (int i = 0; i < 600 && done.empty(); i++) {
 		b.step();
@@ -193,7 +193,7 @@ void test_body_control_policy()
 	}
 	CHECK(done.size() == 1 && done[0].code == body::kLinTimeout);
 	// once in communication error the request is refused at once
-	d = bc.request(body::kSetWindowPosition, 0x2002, {60}, b.now, true, b.master, token++);
+	d = bc.request(body::kSetWindowPosition, true, {60}, b.now, true, b.master, token++);
 	CHECK(!d.pending && d.code == body::kLinTimeout);
 }
 
