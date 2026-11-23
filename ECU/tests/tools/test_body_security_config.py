@@ -1,6 +1,8 @@
 import importlib.util
 import json
+import os
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +11,58 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 MODULE = ROOT / "ECU/tools/security/render_body_vsomeip.py"
 EVIDENCE_MODULE = ROOT / "ECU/tools/security/scenario_evidence.py"
+PRINCIPAL_HELPER = ROOT / "ECU/scripts/lib/body-control-principal.sh"
+
+
+class PrincipalResolutionTest(unittest.TestCase):
+    def resolve(self, variables=None, saved=(), account_exists=True):
+        environment = {k: v for k, v in os.environ.items() if k not in ("BODY_CONTROL_UID", "BODY_CONTROL_GID")}
+        environment.update(variables or {})
+        lookup = (
+            'id() { if [[ $1 == -u && $2 == vehicle-body-control ]]; then printf "997\\n"; '
+            'elif [[ $1 == -g && $2 == vehicle-body-control ]]; then printf "973\\n"; else return 1; fi; }; '
+            if account_exists else 'id() { return 1; }; '
+        )
+        script = lookup + 'source "$1"; shift; resolve_body_control_principal "$@" || exit 1; printf "%s %s\\n" "$BODY_CONTROL_UID" "$BODY_CONTROL_GID"'
+        return subprocess.run(["bash", "-eu", "-c", script, "test", str(PRINCIPAL_HELPER), *saved],
+                              env=environment, text=True, capture_output=True)
+
+    def test_looks_up_deployment_account(self):
+        result = self.resolve()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "997 973")
+
+    def test_explicit_pair_works_without_account(self):
+        result = self.resolve({"BODY_CONTROL_UID": "61001", "BODY_CONTROL_GID": "61002"}, account_exists=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "61001 61002")
+
+    def test_missing_account_fails(self):
+        result = self.resolve(account_exists=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("vehicle-body-control", result.stderr)
+
+    def test_partial_empty_root_and_invalid_pairs_fail(self):
+        for variables in (
+            {"BODY_CONTROL_UID": "997"}, {"BODY_CONTROL_GID": "973"},
+            {"BODY_CONTROL_UID": "", "BODY_CONTROL_GID": "973"},
+            {"BODY_CONTROL_UID": "0", "BODY_CONTROL_GID": "973"},
+            {"BODY_CONTROL_UID": "997", "BODY_CONTROL_GID": "0"},
+            {"BODY_CONTROL_UID": "4294967296", "BODY_CONTROL_GID": "973"},
+            {"BODY_CONTROL_UID": "other", "BODY_CONTROL_GID": "973"},
+        ):
+            with self.subTest(variables=variables):
+                self.assertNotEqual(self.resolve(variables).returncode, 0)
+
+    def test_runner_uses_saved_pair_without_account_lookup(self):
+        result = self.resolve(saved=("997", "973"), account_exists=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "997 973")
+
+    def test_explicit_pair_takes_precedence_over_saved_pair(self):
+        result = self.resolve({"BODY_CONTROL_UID": "61001", "BODY_CONTROL_GID": "61002"}, saved=("997", "973"))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "61001 61002")
 
 
 class BodySecurityConfigTest(unittest.TestCase):

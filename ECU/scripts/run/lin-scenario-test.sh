@@ -6,8 +6,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 RUN_AS=$(stat -c %U "$ROOT")
-: "${BODY_CONTROL_UID:?BODY_CONTROL_UID must be the deployment-assigned BodyControl UID}"
-: "${BODY_CONTROL_GID:?BODY_CONTROL_GID must be the deployment-assigned BodyControl GID}"
+# shellcheck source-path=SCRIPTDIR source=../lib/body-control-principal.sh
+source "$ROOT/ECU/scripts/lib/body-control-principal.sh"
 
 [[ $EUID -eq 0 ]] || { echo "root 권한이 필요합니다 (su - 후 실행)"; exit 1; }
 for b in ecu_engine lin_slave vehicle_gateway body_control_client; do
@@ -17,9 +17,10 @@ for ns in ns_ap ns_gateway ns_vehicle ns_body; do
 	ip netns list | awk '{print $1}' | grep -qxF "$ns" || { echo "$ns 가 없습니다: practice/scripts/setup.sh 먼저"; exit 1; }
 done
 [[ -r /run/chakan-security/body-control-principal ]] || {
-	echo "BodyControl runtime principal이 없습니다: BODY_CONTROL_UID/GID와 함께 practice/scripts/setup.sh를 다시 실행"; exit 1;
+	echo "BodyControl runtime principal이 없습니다: practice/scripts/setup.sh를 먼저 실행하세요"; exit 1;
 }
 read -r SETUP_BODY_UID SETUP_BODY_GID </run/chakan-security/body-control-principal
+resolve_body_control_principal "$SETUP_BODY_UID" "$SETUP_BODY_GID"
 [[ $BODY_CONTROL_UID == "$SETUP_BODY_UID" && $BODY_CONTROL_GID == "$SETUP_BODY_GID" ]] || {
 	echo "현재 BODY_CONTROL_UID/GID가 setup에 사용한 principal과 다릅니다"; exit 1;
 }

@@ -420,7 +420,7 @@ Method 요청은 아래 요청자 권한 경계, 범위, 차량 상태와 rate l
 
 BodyControl 요청자 권한은 SOME/IP client ID로 판단하지 않는다. client ID는 request/response routing과 correlation에만 사용하며 애플리케이션 principal이 아니다. 연습 구성은 다음 계층을 모두 적용한다.
 
-- 배포가 지정한 전용 non-root `BODY_CONTROL_UID`와 `BODY_CONTROL_GID`로 BodyControl client를 실행하고 supplementary group은 모두 제거한다. 두 값은 다른 AP 프로세스의 workspace UID/GID와 달라야 한다. 숫자값은 OEM/target 배포 항목이므로 저장소 기본값을 두지 않는다.
+- 배포가 지정한 전용 non-root `BODY_CONTROL_UID`와 `BODY_CONTROL_GID`로 BodyControl client를 실행하고 supplementary group은 모두 제거한다. 두 값은 다른 AP 프로세스의 workspace UID/GID와 달라야 한다. 숫자값은 OEM/target 배포 항목이므로 저장소 기본값을 두지 않는다. 2026-11-23 실행 편의 변경: 현재 배포에 사용자가 지정한 `vehicle-body-control` 계정의 UID와 primary GID를 setup에서 자동 조회한다. 계정이 없으면 중단하며 계정을 자동 생성하지 않는다. 명시적인 UID/GID 쌍은 기존처럼 우선 적용하고 한쪽만 지정하면 거부한다. LIN 시험은 setup이 기록한 principal을 기본으로 사용하고 명시한 값이 다르면 중단한다. 신뢰 경계와 포트·주소는 유지하며, 계정 조회·미존재·부분 지정·명시적 지정 및 기존 시험을 재검증한다.
 - 개발자 home은 전용 principal에게 열지 않는다. 시나리오 runner가 client와 workspace-local shared library만 root-owned `/run/chakan-security/body-runtime`에 설치하여 배포 이미지 경계를 모사한다.
 - vSomeIP local security의 UNIX credential 검사와 routing credential을 켜고 UDS 권한을 `0600`으로 제한한다. 실행 시 root-owned `/run/chakan-security/vsomeip`에 credential-bound 설정을 생성하여 다른 AP 프로세스가 routing manager를 대리 사용하지 못하게 한다.
 - `ns_ap` nftables는 전용 UID가 소유하고 required XFRM policy가 결합된 socket만 TCP/30512 송신을 허용한다. XFRM 변환 뒤 outer ESP에는 socket UID가 없으므로 AP→Gateway 고정 주소쌍의 ESP만 별도 송신 허용한다.

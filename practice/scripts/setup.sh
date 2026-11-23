@@ -6,18 +6,10 @@
 #                                      └─ vxlin ── [ns_body]   (Phase 6 LIN 차체 도메인: Door·Window·Light)
 #
 # 여러 번 실행해도 결과가 같다: 먼저 cleanup.sh로 지운 뒤 처음부터 다시 만든다.
-# 사용: su - 로 root가 된 뒤  /home/ghwls/work/practice/scripts/setup.sh
+# 사용: root에서 실행. 기본 계정 vehicle-body-control 또는 명시적인 BODY_CONTROL_UID/GID 쌍 사용.
 
 set -euo pipefail   # 중간에 하나라도 실패하면 즉시 멈춘다
 
-: "${BODY_CONTROL_UID:?BODY_CONTROL_UID must be the deployment-assigned BodyControl UID}"
-: "${BODY_CONTROL_GID:?BODY_CONTROL_GID must be the deployment-assigned BodyControl GID}"
-[[ $BODY_CONTROL_UID =~ ^[0-9]+$ && $BODY_CONTROL_GID =~ ^[0-9]+$ ]] || {
-	echo "BODY_CONTROL_UID/GID는 10진수여야 합니다"; exit 1;
-}
-(( BODY_CONTROL_UID > 0 && BODY_CONTROL_UID < 4294967296 && BODY_CONTROL_GID > 0 && BODY_CONTROL_GID < 4294967296 )) || {
-	echo "BODY_CONTROL_UID/GID는 root가 아닌 32-bit 값이어야 합니다"; exit 1;
-}
 
 # ---- 이름과 주소 (여기만 바꾸면 전체가 바뀐다) ----
 NS_AP=ns_ap
@@ -34,6 +26,10 @@ LIN_BODY=vxlin_body  # LIN 전용선: 차체 ECU(LIN Slave) 쪽 끝
 HERE="$(cd "$(dirname "$0")" && pwd)"        # 이 스크립트가 있는 폴더
 FW_DIR="$HERE/../firewall"                     # 방화벽 규칙 파일 폴더
 ROOT="$(cd "$HERE/../.." && pwd)"
+# shellcheck source-path=SCRIPTDIR source=../../ECU/scripts/lib/body-control-principal.sh
+source "$ROOT/ECU/scripts/lib/body-control-principal.sh"
+# shellcheck disable=SC2119 # setup은 저장된 값 없이 배포 계정을 조회한다.
+resolve_body_control_principal
 RUNTIME_DIR=/run/chakan-security
 VSOMEIP_RUNTIME="$RUNTIME_DIR/vsomeip"
 BODY_REQID=1100
@@ -49,7 +45,7 @@ WORKSPACE_GID=$(stat -c %g "$ROOT")
 "$HERE/cleanup.sh"                             # 예전 연습 구성이 있으면 먼저 지운다
 modprobe vxcan                                 # 가상 CAN 기능 켜기
 
-# 배포 principal을 host account로 추측하지 않는다. root-owned runtime config에 숫자 UID/GID만 반영한다.
+# 배포 계정에서 조회하거나 명시한 principal을 root-owned runtime config에 기록한다.
 install -d -m 0755 "$RUNTIME_DIR" "$VSOMEIP_RUNTIME"
 install -m 0600 /dev/null "$RUNTIME_DIR/body-control-principal"
 printf '%s %s\n' "$BODY_CONTROL_UID" "$BODY_CONTROL_GID" >"$RUNTIME_DIR/body-control-principal"
