@@ -189,3 +189,7 @@ add_test(NAME body_security_config
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/ECU/tests/tools/test_body_security_config.py)
 add_test(NAME vsomeip_runtime
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/ECU/tests/tools/test_vsomeip_runtime.py)
+
+add_test(NAME boost_package_integrity
+	COMMAND ${Python3_EXECUTABLE} -m pytest -q -p no:cacheprovider
+	${CMAKE_SOURCE_DIR}/ECU/tests/setup/test_boost_package_integrity.py)
