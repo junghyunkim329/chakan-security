@@ -1,6 +1,6 @@
 # Adaptive Vehicle Cybersecurity SIL
 
-문서 기준일: 2026-11-23
+문서 기준일: 2026-11-24
 
 설계 기준: AUTOSAR Adaptive Platform R25-11 참고
 
@@ -470,7 +470,7 @@ vSomeIP을 사용해 SOME/IP message, Service Discovery, request/response와 eve
 
 2026-11-23 Issue #7 공급망 통제 변경: 실제 구현은 `ECU/scripts/setup/`에 두고 기존 루트 build 명령은 호환 진입점으로 유지한다. 신뢰 경계는 검토된 Git manifest와 host APT archive keyring이며, 빌드 사용자·host는 신뢰한다. 기존 `third_party/debs`와 추출 root를 신뢰 입력으로 재사용하지 않는다. 검증 실패 시 빌드를 중단하고 기존 root를 보존한다. archive header timestamp가 유지되므로 기존 object가 잘못 재사용되지 않도록 vSomeIP은 매번 `--clean-first`로 재컴파일한다(증분 빌드 속도 대신 입력 추적성 우선). 이는 **실차 탑재 소프트웨어의 양산 빌드·공급망 통제와의 유사성**을 위한 프로젝트 선택이며 ECU에서 APT를 실행하는 모델이 아니다.
 
-근거: 지정 R155 원문+Amendment 1~3 누적본 5.1.1(a), 7.2.2.5, 7.3.2의 공급망 정보 검증·공급자 의존성·공급자 위험 관리, KISA ISO/SAE 21434 기반 매뉴얼(2025-12-31) 3-3-2 22쪽의 오픈소스 출처·서명 검증. [AGL](https://docs.automotivelinux.org/en/master/04_Developer_Guides/02_AGL_Platform_Development/01_AGL_Yocto_Layers/01_Overview/)의 Yocto/OpenEmbedded 구조와 [Yocto](https://docs.yoctoproject.org/dev-manual/new-recipe.html#fetching-code)의 recipe 사전 checksum·분리 WORKDIR에 대응한다. 규정이 특정 SHA-256 manifest나 staging 구현을 직접 지정하는 것은 아니다. [APT](https://manpages.ubuntu.com/manpages/noble/man8/apt-secure.8.html)의 archive 인증 위에 프로젝트 승인 byte 목록을 추가한다. 양산 내부 artifact repository, OEM 승인·키 관리, SBOM 전체, 서명된 build provenance 및 완전 hermetic build는 이 SIL의 검증 범위 밖이다. R156 7.2.1.1은 배포 업데이트의 진위성·무결성 보호로서 별도 후단 통제다. 상세 통제 매핑은 `ECU/docs/superpowers/specs/2026-11-23-boost-package-integrity-design.md`에 기록한다.
+근거: 지정 R155 원문+Amendment 1~3 누적본 5.1.1(a), 7.2.2.5, 7.3.2의 공급망 정보 검증·공급자 의존성·공급자 위험 관리, KISA ISO/SAE 21434 기반 매뉴얼(2025-12-31) 3-3-2 22쪽의 오픈소스 출처·서명 검증. [AGL](https://docs.automotivelinux.org/en/master/04_Developer_Guides/02_AGL_Platform_Development/01_AGL_Yocto_Layers/01_Overview/)의 Yocto/OpenEmbedded 구조와 [Yocto](https://docs.yoctoproject.org/dev-manual/new-recipe.html#fetching-code)의 recipe 사전 checksum·분리 WORKDIR에 대응한다. 규정이 특정 SHA-256 manifest나 staging 구현을 직접 지정하는 것은 아니다. [APT](https://manpages.ubuntu.com/manpages/noble/man8/apt-secure.8.html)의 archive 인증 위에 프로젝트 승인 byte 목록을 추가한다. 양산 내부 artifact repository, OEM 승인·키 관리, SBOM 전체, 서명된 build provenance 및 완전 hermetic build는 이 SIL의 검증 범위 밖이다. R156 7.2.1.1은 배포 업데이트의 진위성·무결성 보호로서 별도 후단 통제다. 상세 통제 매핑은 `ECU/docs/evidence/boost-package-integrity.md`에 기록한다.
 
 구현: `src/gateway/`(입력 검증, state cache, payload, `vehicle_gateway`), `src/adaptive/vehicle-state/`(`vehicle_state_consumer`), `config/services/vehicle_state.yaml`, `tools/codegen/gen_services.py`, `config/vsomeip/`, 시험 `tests/unit/test_{can_input_validator,vehicle_state_cache,vehicle_state_payload}.cpp`, 통합 `scripts/run/gateway-someip-test.sh`.
 
@@ -772,7 +772,9 @@ PDU에 counter, validity와 CRC를 두고 Gateway가 freshness와 오류 상태�
 - 공격 시작 후 1초 안에 대응 IDS event 기록
 - DLT와 SQLite event가 동일 experiment ID를 보유
 
-각 실험은 `docs/results/YYYYMMDD-HHMMSS_<scenario>_<run-id>/`에 `manifest.json`, `labels.jsonl`, `ids-events.jsonl`, `summary.md`를 저장한다. packet capture와 대용량 raw log는 같은 이름으로 생성하되 Git에는 포함하지 않는다. `manifest.json`은 VM·kernel·dependency version, commit, seed, 시작·종료 시각, namespace/interface, rate·duration·frame count와 실행 명령을 포함한다. `labels.jsonl`은 ground truth 시작·종료와 attack type을 기록한다.
+각 실험은 `docs/results/YYYYMMDD-HHMMSS_<scenario>_<run-id>/`에 `manifest.json`, `labels.jsonl`, `ids-events.jsonl`, `summary.md`를 저장한다. `manifest.json`은 VM·kernel·dependency version, commit, seed, 시작·종료 시각, namespace/interface, rate·duration·frame count와 실행 명령을 포함한다. `labels.jsonl`은 ground truth 시작·종료와 attack type을 기록한다.
+
+2026-11-24 사용자 확정 보관 정책: 실행별 산출물은 `summary.md`, `verdict.json`, `report.json`, 배포 hash, packet capture와 raw log를 포함해 모두 로컬 결과 폴더에 보관하고 Git에는 포함하지 않는다. 기존 추적 파일은 로컬 원본을 유지한 채 Git 추적에서 제거한다. ECU·IDS 하위의 `docs/results/`도 같은 정책을 적용한다. 프로젝트를 받아 사용할 사람에게 필요한 재현 명령, 합격 기준, 주요 성공·실패와 한계는 `ECU/docs/evidence/` 또는 `IDS/docs/evidence/`에 선별해 정리한다. 기준서와 안내서에 나오는 과거 `docs/results/` 경로는 로컬 실행 기록의 식별자이며 새 checkout에 포함된 파일 링크를 의미하지 않는다. 완료된 내부 에이전트 작업계획과 세션 기록(`docs/superpowers/`, 각 도메인의 같은 경로, `.superpowers/`)도 로컬 전용으로 관리하고, 유지할 설계 근거는 정식 문서 경로로 옮긴다. 시험 구현·configuration·입력 fixture와 사용 안내서는 계속 버전 관리한다.
 
 50ms, 1초와 3초는 실차 제조사 요구사항이 아니라 VM에서 반복 가능한 자동 시험을 위한 프로젝트 합격 기준이다. 시험 결과에는 VM 자원, kernel, dependency version, 부하, 표본 수와 측정 명령을 기록한다.
 

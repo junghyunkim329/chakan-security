@@ -22,12 +22,14 @@ ECU/scripts/run/lin-scenario-test.sh
 
 완료 시 출력한 `docs/results/<시각>_lin/`의 `summary.md`, `verdict.json`, `report.json`을 확인한다. 상세 증거는 같은 폴더의 `*.nft-trace.txt`, `*.connect-trace.txt`, `*.runtime.log`에 남긴다. 모든 판정과 복원 검사가 통과해야 완료다. 도구 오류, 경로 미도달, lock 오류 또는 액추에이터 무변화만으로 통과시키지 않는다.
 
+실행별 결과 파일은 `project.md` §15.2에 따라 로컬 전용이다. 이 문서에는 재현 방법과 주요 검증 요약만 유지한다. 아래 과거 실행 경로는 로컬 기록의 식별자이며 새 checkout에는 포함되지 않는다. 공개된 기존 근거는 [해결 커밋의 최종 결과](https://github.com/junghyunkim329/chakan-security/blob/1b7e1f048cc5777e0e962546aee55edfef196bb0/docs/results/20261123-235545_lin/summary.md)와 [이슈 #8 해결 댓글](https://github.com/junghyunkim329/chakan-security/issues/8#issuecomment-7105027876)에서 확인할 수 있다.
+
 ## 검증 상태
 
 - 일반 권한 검증: `test_body_security_config.py` 18개, CTest 16개 통과. shellcheck, Python 구문 검사, diff 공백 검사 통과.
 - 첫 root 통합시험: `docs/results/20261123-235144_lin/`에서 40/43 통과. 실제 Proxy mode의 기존·대체 client ID 모두 UDS connect EACCES를 확인했다. 직접 socket과 비보호 TCP는 실제 nft trace에 drop이 기록됐으나 복원 검사 예외로 최종 판정에 반영하지 못했으며 UDP는 실행되지 않았다. 정상 요청·ESP 보호·LIN 검사는 통과했다.
 - 실패 원인과 수정: iproute2 XFRM policy 출력은 전역 `-j`에도 일반 텍스트인데 시험 도구가 JSON으로 해석했다. `ip -s xfrm policy list` 텍스트를 전후 파일로 보존하고 사용량·사용 시각만 제외한 정책 설정을 비교하도록 수정했다. lifetime limit 및 required/use 변경은 실패로 판정하는 회귀시험을 추가했다. [iproute2 policy 출력 구현](https://github.com/iproute2/iproute2/blob/main/ip/ipxfrm.c)의 `xfrm_policy_info_print`와 `xfrm_lifetime_print`를 대조했다.
-- 수정 후 root 통합시험: 사용자가 원격 root 터미널에서 재실행한 `docs/results/20261123-235545_lin/`은 **44/44 통과**했다. 상세 probe·복원 보고 10개도 모두 통과했으며 실제 trace와 전후 정책 파일을 대조했다. 첫 실패 결과는 그대로 보존한다.
+- 수정 후 root 통합시험: 사용자가 원격 root 터미널에서 재실행한 `docs/results/20261123-235545_lin/`은 **44/44 통과**했다. 상세 probe·복원 보고 10개도 모두 통과했으며 실제 trace와 전후 정책 파일을 대조했다. 첫 실패 결과도 로컬에 그대로 보존한다.
 - 이 시험은 프로젝트 SIL의 기존 통제를 대상으로 하며 RAV4 양산 ECU의 UID 정책·IPsec 배치나 규정 적합성을 증명하지 않는다.
 
 ## 최종 root 실행의 관측값
