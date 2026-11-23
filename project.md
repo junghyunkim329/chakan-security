@@ -74,6 +74,19 @@
 
 확인을 요청할 때는 미정 항목, 지금 결정이 필요한 이유, 영향받는 작업, 현실적인 선택지와 권장안을 제시한다. 임시값, OEM 요구사항 또는 개발 편의상의 기본값을 조용히 만들어 사용하지 않는다. 미정 결정과 독립적인 작업만 계속할 수 있다.
 
+### 2.2 기준 차량과 적용 범위 (2026-11-23 사용자 확정)
+
+차량 도메인 ECU는 **Toyota RAV4 2019~2021 가솔린 모델의 공개 CAN 정보를 참고하여 만든다.** 엔진·제동·조향·변속기 등 내연기관 차량의 역할을 유지하면서 공개 통신 구현과 신호 정의를 대조할 수 있어 이 차종군을 기준으로 선택했다. Hybrid와 Prime은 이 기준에 포함하지 않는다.
+
+프로젝트 구성은 **“RAV4 가솔린의 공개 CAN 정보를 참고한 차량 도메인 + 프로젝트 자체 Adaptive/Gateway 계층”**으로 정의한다. 무료 Linux SIL, AUTOSAR Adaptive 구조 학습, CAN·LIN·Ethernet 연동 및 향후 IDPS 검증이라는 프로젝트 목표를 유지한다.
+
+- 공개 구현 근거: [commaai/opendbc Toyota 차량 정의](https://github.com/commaai/opendbc/blob/master/opendbc/car/toyota/values.py)의 `TOYOTA_RAV4_TSS2`와 [Toyota 통신 구현](https://github.com/commaai/opendbc/tree/master/opendbc/car/toyota)을 출발점으로 사용한다. 이는 커뮤니티 공개 구현이며 Toyota가 제공한 전체 OEM 사양서나 DBC로 취급하지 않는다.
+- 적용 방법: 해당 가솔린 구성에 적용됨이 확인된 CAN ID, 신호 배치, 단위, counter/checksum 및 송수신 동작을 출처와 함께 차량 도메인에 반영한다. 적용 전 공개 자료의 commit, 파일, 대상 연식·시장·구성 및 검증 근거를 고정하고 요구사항·코드·시험에 연결한다.
+- 확인 불가 항목: 전체 차체·LIN 명세, ECU 내부 권한 정책, 보안키, OEM 진단·타이밍·안전 요구사항은 공개 CAN 정보만으로 확정하지 않는다. 구체적인 연식·시장·트림·ECU/firmware 차이가 구현에 영향을 주면 §2.1에 따라 사용자 결정을 받은 뒤 적용한다.
+- 프로젝트 자체 계층: Adaptive 애플리케이션, SOME/IP 서비스, Gateway 변환, LIN 시뮬레이션과 DoIP 진단은 해당 RAV4에서의 사용이 별도로 확인되기 전까지 교육용 프로젝트 설계로 분류한다. 전체 차량 네트워크·보안 구조가 RAV4와 같다고 주장하지 않는다.
+- 현재 구현과의 관계: 이 절은 후속 구현의 기준 차량 선택을 기록한 것이며, CAN 정의·configuration·코드의 RAV4 전환을 완료했다는 뜻은 아니다. §5~§11의 기존 ID·배치·주기·주소·포트·권한·보안 통제와 합격 기준은 각 항목의 근거를 확인하고 기준서를 갱신하기 전까지 기존 프로젝트 선택값으로 유지한다. 현재 BodyControl의 UID·vSomeIP credential·IPsec 역시 RAV4의 실제 통제로 표현하지 않는다.
+- 후속 검증: CAN 정의 변경 시 codec·counter/checksum·입력 검증·ECU 주기 시험, Gateway payload·SOME/IP 연동, 진단 및 영향받는 LIN 시나리오와 IDS fixture를 재검증한다. 차종별 외부 데이터셋의 IDS 평가 결과와 이 SIL의 실행 결과를 구분하고, IDPS 추가 전후 비교는 동일한 구성·시나리오·관측 지점을 기준으로 수행한다.
+
 ## 3. 실행 환경
 
 ### 3.1 가상 머신
