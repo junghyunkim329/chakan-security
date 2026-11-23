@@ -29,7 +29,11 @@ BODY_ENV = {"LD_LIBRARY_PATH": BODY_RUNTIME / "lib"}
 sys.path.insert(0, str(ROOT / "tools"))
 from sil_can.lin import enhanced_checksum, protected_id  # noqa: E402
 sys.path.insert(0, str(ROOT / "ECU/tools/security"))
-from scenario_evidence import contiguous_positive_steps, routing_rejection  # noqa: E402
+from scenario_evidence import contiguous_positive_steps  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from body_boundary_probes import BoundaryProbes  # noqa: E402
+
+boundary = BoundaryProbes(ROOT, OUT, BODY_UID, BODY_GID, RUN_AS)
 
 results = []
 procs = {}
@@ -41,6 +45,14 @@ SCHED = [0x11, 0x12, 0x13, 0x14, 0x10, 0x11, 0x12]
 def check(group, name, ok, value):
     results.append({"group": group, "name": name, "pass": bool(ok), "value": str(value)})
     print(f"{'PASS' if ok else 'FAIL'}  [{group}] {name}: {value}", flush=True)
+
+
+def boundary_check(name, action):
+    try:
+        report = action()
+    except Exception as error:
+        report = boundary.save({"probe": name, "pass": False, "error": f"{type(error).__name__}: {error}"})
+    check("권한 경계", name, report.get("pass", False), report)
 
 
 def start(name, ns, *cmd, env=None, stdin=None, uid=RUN_AS, gid=None, root=False):
@@ -93,29 +105,6 @@ def send(cmd):
     procs["client"].stdin.write(cmd + "\n")
     procs["client"].stdin.flush()
     return t
-
-
-def send_to(name, cmd):
-    t = time.monotonic()
-    p = procs[name]
-    if p.poll() is not None:
-        return t, False
-    try:
-        p.stdin.write(cmd + "\n")
-        p.stdin.flush()
-        return t, True
-    except (BrokenPipeError, OSError):
-        return t, False
-
-
-def rejected_probe_evidence(name, wrote):
-    stop(name)
-    log = (OUT / f"{name}.log").read_text()
-    runtime = (OUT / f"{name}.runtime.log").read_text()
-    evidence = routing_rejection(log, runtime)
-    if evidence:
-        return True, evidence
-    return False, "stdin accepted without rejection evidence" if wrote else "no security rejection evidence"
 
 
 def responses_after(t):
@@ -342,18 +331,9 @@ def scenario():
 
     # ---- authenticated principal, independent of SOME/IP client ID ----
     time.sleep(1.1)
-    attacker_proxy = start("client_attacker_proxy", "ns_ap", BODY_CLIENT,
-                           env={**BODY_ENV, "VSOMEIP_CONFIGURATION": VSOMEIP_RUNTIME / "body_client_alt_id.json"},
-                           stdin=subprocess.PIPE)
-    threading.Thread(target=client_reader, args=("client_attacker_proxy", attacker_proxy), daemon=True).start()
-    time.sleep(1.0)
-    before = last_event() and last_event()["window"]
-    t, wrote = send_to("client_attacker_proxy", "window 60")
-    r = wait_response(t, 2)
-    after = last_event() and last_event()["window"]
-    attempted, evidence = rejected_probe_evidence("client_attacker_proxy", wrote)
-    check(G1, "다른 OS 주체가 실행 중인 신뢰 라우팅 매니저를 대리 사용하지 못함",
-          attempted and r is None and after == before, f"probe={evidence}, response={r}, window={before}->{after}")
+    boundary_check("비신뢰 UID의 직접 TCP socket은 AP UID 방화벽에서 거부", boundary.direct)
+    boundary_check("대체 client ID의 실제 proxy UDS 연결은 권한 경계에서 거부",
+                   lambda: boundary.proxy(BODY_CLIENT, VSOMEIP_RUNTIME / "body_client_alt_id.json", "0x2002", "proxy_alt_id"))
 
     send("quit")
     time.sleep(0.5)
@@ -371,19 +351,27 @@ def scenario():
     _, ev = wait_event(t, lambda d: d["window"] == 60, 3)
     check(G1, "신뢰 OS 주체는 대체 client ID 0x2FFF로도 정상 요청", code(r) == 0 and ev is not None, r)
 
-    attacker_allowed_id = start("client_attacker_allowed_id", "ns_ap", BODY_CLIENT,
-                                env={**BODY_ENV, "VSOMEIP_CONFIGURATION": VSOMEIP_RUNTIME / "body_client.json"},
-                                stdin=subprocess.PIPE)
-    threading.Thread(target=client_reader, args=("client_attacker_allowed_id", attacker_allowed_id), daemon=True).start()
-    time.sleep(1.0)
-    before = last_event() and last_event()["window"]
-    t, wrote = send_to("client_attacker_allowed_id", "window 77")
-    r = wait_response(t, 2)
-    after = last_event() and last_event()["window"]
-    attempted, evidence = rejected_probe_evidence("client_attacker_allowed_id", wrote)
-    check(G1, "승인 client ID 0x2002를 사용해도 비신뢰 OS 주체는 거부",
-          attempted and r is None and before == 60 and after == before,
-          f"probe={evidence}, response={r}, window={before}->{after}")
+    boundary_check("승인 client ID를 사용한 비신뢰 실제 proxy도 UDS 연결 거부",
+                   lambda: boundary.proxy(BODY_CLIENT, VSOMEIP_RUNTIME / "body_client.json", "0x2FFF", "proxy_allowed_id"))
+
+    # Normal capture ends BEFORE deliberate plaintext injection. Preserve an
+    # independent capture for normal traffic after the boundary probes as well.
+    stop("eth_capture")
+    try:
+        for report in boundary.unprotected():
+            check("권한 경계", report["probe"] + " Gateway 입력 거부", report["pass"], report)
+    except Exception as error:
+        boundary_check("Gateway 비보호 주입 도구 오류", lambda: {"pass": False, "error": str(error)})
+    restored = {r["probe"]: r for r in boundary.reports if r["probe"].endswith("_restoration")}
+    expected = {name + "_restoration" for name in
+                ("direct_socket", "unprotected_tcp", "unprotected_udp", "proxy_alt_id", "proxy_allowed_id")}
+    check("권한 경계", "임시 설정 제거·기존 방화벽과 XFRM 정책 원복 확인",
+          set(restored) == expected and all(r["pass"] for r in restored.values()), restored)
+    start("eth_capture_after", "ns_gateway", "tcpdump", "-i", "veth_gw", "-nn", "-l", root=True)
+    time.sleep(1.1)
+    t = send("window 60")
+    r = wait_response(t, 3)
+    check(G1, "경계 시험 후에도 신뢰 principal의 명령 accepted(0)", code(r) == 0, r)
 
 
 def evaluate():
@@ -438,14 +426,16 @@ def evaluate():
     up = contiguous_positive_steps(light)
     check(G4, "실내등 fade: 100 ms마다 10%씩 밝아짐", up and max(up) <= 10 and 10 in up, sorted(set(up)))
 
-    ethernet = (OUT / "eth_capture.out").read_text()
-    clear_body = [line for line in ethernet.splitlines() if ".30512" in line]
-    check("명령·응답", "BodyControl veth traffic은 ESP로 보호되고 clear TCP/30512가 없음",
-          "ESP(" in ethernet and not clear_body, f"esp={'ESP(' in ethernet}, clear={len(clear_body)}")
+    for label in ("eth_capture", "eth_capture_after"):
+        path = OUT / f"{label}.out"
+        ethernet = path.read_text() if path.exists() else ""
+        clear_body = [line for line in ethernet.splitlines() if ".30512" in line]
+        check("명령·응답", f"정상 구간 {label}: ESP 관찰·clear TCP/30512 없음",
+              "ESP(" in ethernet and not clear_body, f"esp={'ESP(' in ethernet}, clear={len(clear_body)}")
 
     ok = all(r["pass"] for r in results)
     gw = [l for l in (OUT / "gateway.out").read_text().splitlines() if l.startswith("{")]  # vSomeIP also logs to stdout
-    groups = ["명령·응답", "응답 누락", "복구", "LIN 프로토콜"]
+    groups = ["명령·응답", "권한 경계", "응답 누락", "복구", "LIN 프로토콜"]
     md = ["# Phase 6 LIN 차체 도메인 시나리오 시험 (연습 구성 hj_*)", "", f"- 결과: **{'PASS' if ok else 'FAIL'}**",
           f"- 기준 {sum(r['pass'] for r in results)}/{len(results)} 통과", ""]
     for g in groups:
@@ -455,7 +445,7 @@ def evaluate():
         md.append("")
     md += ["## Gateway 보고", "", "```json", gw[-1] if gw else "(없음)", "```", ""]
     (OUT / "summary.md").write_text("\n".join(md), encoding="utf-8")
-    (OUT / "verdict.json").write_text(json.dumps({"pass": ok, "results": results}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (OUT / "verdict.json").write_text(json.dumps({"pass": ok, "results": results, "boundary_probes": boundary.reports}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print("\n".join(md))
     sys.exit(0 if ok else 1)
 

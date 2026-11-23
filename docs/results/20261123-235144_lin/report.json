@@ -1,0 +1,53 @@
+{
+  "boundary_probes": [
+    {
+      "probe": "\ube44\uc2e0\ub8b0 UID\uc758 \uc9c1\uc811 TCP socket\uc740 AP UID \ubc29\ud654\ubcbd\uc5d0\uc11c \uac70\ubd80",
+      "pass": false,
+      "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "probe": "proxy_alt_id",
+      "pass": true,
+      "principal": {
+        "type": "probe_principal",
+        "uid": 1001,
+        "gid": 1001,
+        "groups": [],
+        "pid": 319369
+      },
+      "proxy_mode": true,
+      "routing_socket": "/tmp/vsomeip-sil-apbody-0",
+      "trusted_router_present": true,
+      "exit_code": 137,
+      "denied_boundary": "UDS connect permission",
+      "trace_file": "proxy_alt_id.connect-trace.txt"
+    },
+    {
+      "probe": "proxy_alt_id_restoration",
+      "pass": true,
+      "temporary_proxy_config_removed": true
+    },
+    {
+      "probe": "proxy_allowed_id",
+      "pass": true,
+      "principal": {
+        "type": "probe_principal",
+        "uid": 1001,
+        "gid": 1001,
+        "groups": [],
+        "pid": 319418
+      },
+      "proxy_mode": true,
+      "routing_socket": "/tmp/vsomeip-sil-apbody-0",
+      "trusted_router_present": true,
+      "exit_code": 137,
+      "denied_boundary": "UDS connect permission",
+      "trace_file": "proxy_allowed_id.connect-trace.txt"
+    },
+    {
+      "probe": "proxy_allowed_id_restoration",
+      "pass": true,
+      "temporary_proxy_config_removed": true
+    }
+  ]
+}

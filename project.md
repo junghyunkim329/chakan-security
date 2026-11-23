@@ -431,6 +431,8 @@ BodyControl 요청자 권한은 SOME/IP client ID로 판단하지 않는다. cli
 
 2026-11-23 Issue #1 검증: `docs/results/20261123-181657_lin/summary.md`와 `verdict.json`에서 38/38 통과. 전용 UID의 기존 client ID와 대체 ID 요청이 성공하고 다른 UID의 routing manager 시작 시도는 lock 권한 오류로 차단됐다. veth에는 ESP가 관찰되고 평문 TCP/30512는 관찰되지 않았다. 송신 ESP 허용 누락으로 발생했던 연결 장애도 이 실행에서 해소됐다. 실제 proxy mode와 vSomeIP을 거치지 않는 직접 socket 접근의 추가 시험은 후속 보강 대상으로 남긴다.
 
+2026-11-23 Issue #8 시험 보강 구현: 기존 lock 오류 기반 판정을 직접 TCP socket의 AP UID 방화벽 trace·counter와 실제 Proxy mode의 실행 중 routing UDS에 대한 `connect()` 권한 오류 확인으로 교체한다. Gateway의 비보호 TCP/30512와 UDP/30511 method 거부는 격리된 `ns_ap/veth_ap`의 시험 전용 root L2 주입으로 별도 확인한다. 이 주입은 비신뢰 non-root 주체의 권한이나 공격 성공을 의미하지 않는다. 실제 방화벽·XFRM 정책은 변경하지 않고 관찰용 nftrace table·proxy 설정만 만들었다가 제거하며 정책 동일성과 제거 여부를 판정에 포함한다. 정상 요청의 ESP 검사는 의도적인 평문 주입 전후 구간에서 각각 수행한다. 상세 실행·판정 기준은 `ECU/docs/evidence/issue-8-boundary-regression.md`에 기록한다. 첫 root 실행 `docs/results/20261123-235144_lin/`은 40/43 통과로 실패했다. Proxy 연결 거부 두 건은 확인했으나 시험 도구의 XFRM 텍스트 출력 JSON 해석 오류로 직접 socket·Gateway 판정과 복원 확인이 끝나지 않았다. 해당 오류를 수정한 후 사용자 root 재실행 `docs/results/20261123-235545_lin/`에서 **44/44 통과**, 상세 probe·복원 보고 10개 통과와 실제 trace·전후 정책 파일을 확인했다. 단위 테스트 18개와 CTest 16개도 통과했다. Issue #8의 SIL 시험 보강 완료 기준을 충족하며 실차 보안 검증을 주장하지 않는다.
+
 `BodyStatusChanged` payload는 network byte order로 `sequence(uint32)`, `timestamp_us(uint64)`, `door_bits(uint8)`, `window_position(uint8, 0~100)`, `light_state(uint8, 0/1)`, `status_flags(uint8)`, `freshness(uint8)`, `reserved(3-byte, 0)` 순서의 20-byte다.
 
 `SetWindowPosition` request는 1-byte 목표 위치 `0~100`, `SetInteriorLight` request는 1-byte `0/1`이다. response는 1-byte 결과로 `0=accepted`, `1=invalid argument`, `2=state rejected`, `3=LIN timeout`을 사용한다. 범위를 벗어나거나 payload 길이가 다르면 LIN 명령을 만들지 않는다.
