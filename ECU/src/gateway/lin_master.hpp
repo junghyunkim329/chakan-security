@@ -22,10 +22,14 @@ enum class Slave { Door = 0, Window = 1, Light = 2 };
 
 struct SlaveHealth {
 	unsigned missed = 0;  // consecutive missing or corrupted responses
-	unsigned ok = 0;      // consecutive checksum-valid responses
+	unsigned ok = 0;      // consecutive checksum-valid and meaning-valid responses
 	bool degraded = false;
 	std::uint64_t ok_total = 0, missed_total = 0, bad_checksum = 0, recoveries = 0;
-	std::int64_t last_ok_ns = 0;
+	// checksum-valid responses whose meaning is wrong (#2): reserved bit set, valid flag clear, value out of range.
+	// They are not "missing" (the slave answered) but never refresh status, freshness or recovery.
+	std::uint64_t sem_reserved = 0, sem_not_valid = 0, sem_range = 0;
+	std::int64_t last_ok_ns = 0; // time of the last response that passed checksum and meaning checks
+	std::uint64_t semantic_errors() const { return sem_reserved + sem_not_valid + sem_range; }
 };
 
 struct BodyStatus {
@@ -47,9 +51,10 @@ public:
 	// A frame read from the wire (slave responses).
 	void on_frame(const WireFrame &f, std::int64_t now_ns);
 
-	void command_window(std::uint8_t target, std::int64_t now_ns);
+	// Each command gets a sequence number; a later command replaces the target of an unsent one (latest wins).
+	std::uint64_t command_window(std::uint8_t target, std::int64_t now_ns);
 	void cancel_window(std::int64_t now_ns);
-	void command_light(bool on, std::int64_t now_ns);
+	std::uint64_t command_light(bool on, std::int64_t now_ns);
 
 	BusState state() const { return state_; }
 	const BodyStatus &status() const { return status_; }
@@ -57,9 +62,11 @@ public:
 	bool fresh(Slave s, std::int64_t now_ns) const;
 	std::int64_t newest_status_ns() const;
 
-	// for BodyControl method confirmation
+	// for BodyControl method confirmation: sequence and time of the last command frame put on the wire
 	std::int64_t window_cmd_tx_ns() const { return window_cmd_tx_ns_; }
 	std::int64_t light_cmd_tx_ns() const { return light_cmd_tx_ns_; }
+	std::uint64_t window_cmd_tx_seq() const { return window_tx_seq_; }
+	std::uint64_t light_cmd_tx_seq() const { return light_tx_seq_; }
 	std::int64_t status_ns(Slave s) const { return health_[static_cast<int>(s)].last_ok_ns; }
 
 	std::uint64_t slot_overruns() const { return overruns_; }
@@ -89,6 +96,8 @@ private:
 	std::uint8_t light_target_ = 0;
 	bool light_cmd_new_ = false;
 	std::int64_t window_cmd_tx_ns_ = 0, light_cmd_tx_ns_ = 0;
+	std::uint64_t window_cmd_seq_ = 0, light_cmd_seq_ = 0; // last requested
+	std::uint64_t window_tx_seq_ = 0, light_tx_seq_ = 0;   // last sent
 
 	BodyStatus status_;
 	std::array<SlaveHealth, 3> health_{};

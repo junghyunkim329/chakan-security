@@ -56,7 +56,7 @@ target_link_libraries(sil_uds PUBLIC OpenSSL::Crypto)
 add_custom_command(
 	OUTPUT ${SIL_GEN_DIR}/sil_lin_gen.h ${SIL_GEN_DIR}/sil_lin_gen.c
 	COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/codegen/gen_lin.py ${CMAKE_SOURCE_DIR}/config/lin/network.yaml ${SIL_GEN_DIR}
-	DEPENDS ${CMAKE_SOURCE_DIR}/config/lin/network.yaml ${CMAKE_SOURCE_DIR}/tools/codegen/gen_lin.py
+	DEPENDS ${CMAKE_SOURCE_DIR}/config/lin/network.yaml ${CMAKE_SOURCE_DIR}/tools/codegen/gen_lin.py ${CMAKE_SOURCE_DIR}/tools/sil_can/lin.py
 		${CMAKE_SOURCE_DIR}/tools/sil_can/lin.py
 	COMMENT "Generating LIN tables from config/lin/network.yaml"
 	VERBATIM)

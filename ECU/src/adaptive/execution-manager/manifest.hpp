@@ -38,4 +38,8 @@ std::string substitute(const std::string &s, const std::map<std::string, std::st
 // Parses "1", "0-2", "1,3" into cpu indices. Throws on bad syntax.
 std::vector<int> parse_cpu_list(const std::string &s);
 
+// True when both lists name the same CPU set ("1,2" == "1-2" == "2,1"). Surrounding blanks and a trailing
+// newline are ignored (kernel Cpus_allowed_list). A list that does not parse never matches.
+bool same_cpu_set(const std::string &a, const std::string &b);
+
 } // namespace sil::em

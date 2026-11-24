@@ -1,5 +1,8 @@
 // BodyControl request policy (project.md §7.3): allowlist, payload length and range, rate limit, vehicle state,
 // then the LIN command; the method answer waits for the slave's next status (or reports a LIN timeout).
+// One pending request per method: a newer accepted request replaces the older one (latest wins, as a window
+// switch does), and the replaced request is answered kStateRejected instead of being confirmed by a frame
+// that never carried its target (#3).
 // Pure: no SOME/IP, time passed in.
 #pragma once
 
@@ -44,6 +47,7 @@ private:
 		std::uint64_t token;
 		std::uint16_t method;
 		std::int64_t issued_ns;
+		std::uint64_t cmd_seq; // LinMaster command sequence that carries this request's target
 	};
 
 	std::set<std::uint16_t> allowed_;
@@ -51,6 +55,7 @@ private:
 	std::int64_t confirm_timeout_ns_;
 	std::map<std::uint16_t, std::deque<std::int64_t>> recent_;
 	std::vector<Pending> pending_;
+	std::vector<Completion> superseded_; // answered on the next poll()
 	std::map<std::uint8_t, std::uint64_t> rejected_;
 };
 

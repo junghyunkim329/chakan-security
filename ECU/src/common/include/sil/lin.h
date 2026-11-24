@@ -22,6 +22,16 @@ uint8_t sil_lin_checksum(uint8_t pid, const uint8_t *data, size_t len);
 
 const sil_lin_frame_t *sil_lin_frame(uint8_t frame_id);
 
+/* Signal meaning check of a checksum-valid payload against the generated schema (project.md §6.2):
+ * reserved bits 0, valid flag set (frames that carry one), every ranged signal (enums included) inside min..max. */
+typedef enum {
+	SIL_LIN_SEM_OK = 0,
+	SIL_LIN_SEM_RESERVED,
+	SIL_LIN_SEM_NOT_VALID,
+	SIL_LIN_SEM_RANGE,
+} sil_lin_sem_t;
+sil_lin_sem_t sil_lin_check_semantics(const sil_lin_frame_t *frame, const uint8_t *payload);
+
 uint8_t sil_lin_get(const uint8_t *payload, unsigned byte, unsigned bit, unsigned bits);
 void sil_lin_put(uint8_t *payload, unsigned byte, unsigned bit, unsigned bits, uint8_t value);
 

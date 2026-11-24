@@ -336,10 +336,12 @@ void print_report(Gateway &gw)
 		const char *names[3] = {"door", "window", "light"};
 		for (int i = 0; i < 3; i++) {
 			const auto &h = m.health(static_cast<Slave>(i));
-			std::printf(", \"%s\": {\"ok\": %llu, \"missed\": %llu, \"bad_checksum\": %llu, \"recoveries\": %llu, \"degraded\": %s}",
+			std::printf(", \"%s\": {\"ok\": %llu, \"missed\": %llu, \"bad_checksum\": %llu, \"sem_reserved\": %llu,"
+				    " \"sem_not_valid\": %llu, \"sem_range\": %llu, \"recoveries\": %llu, \"degraded\": %s}",
 				    names[i], static_cast<unsigned long long>(h.ok_total), static_cast<unsigned long long>(h.missed_total),
-				    static_cast<unsigned long long>(h.bad_checksum), static_cast<unsigned long long>(h.recoveries),
-				    h.degraded ? "true" : "false");
+				    static_cast<unsigned long long>(h.bad_checksum), static_cast<unsigned long long>(h.sem_reserved),
+				    static_cast<unsigned long long>(h.sem_not_valid), static_cast<unsigned long long>(h.sem_range),
+				    static_cast<unsigned long long>(h.recoveries), h.degraded ? "true" : "false");
 		}
 		std::printf("}");
 	}

@@ -1,5 +1,6 @@
 #include "manifest.hpp"
 
+#include <limits>
 #include <regex>
 #include <set>
 #include <stdexcept>
@@ -54,6 +55,22 @@ std::vector<int> parse_cpu_list(const std::string &s)
 	return cpus;
 }
 
+bool same_cpu_set(const std::string &a, const std::string &b)
+{
+	auto as_set = [](const std::string &s) {
+		const auto first = s.find_first_not_of(" \t\n");
+		const auto last = s.find_last_not_of(" \t\n");
+		const std::string t = first == std::string::npos ? std::string() : s.substr(first, last - first + 1);
+		const std::vector<int> v = parse_cpu_list(t);
+		return std::set<int>(v.begin(), v.end());
+	};
+	try {
+		return as_set(a) == as_set(b);
+	} catch (const std::exception &) {
+		return false;
+	}
+}
+
 namespace {
 
 std::vector<std::string> string_array(const pt::ptree &node, const std::string &key,
@@ -79,9 +96,28 @@ std::string required(const pt::ptree &node, const std::string &key, const std::m
 	return substitute(*v, vars);
 }
 
-std::int64_t ms(const pt::ptree &p, const std::string &key, std::int64_t def_ms)
+// Reads a time policy value, checks its range in its own unit (before any conversion, so no overflow) and
+// returns nanoseconds. Ranges (#6) are project selections; restart_delay_ms <= 3000 follows §8.2 "3초 이내 재시작".
+std::int64_t time_policy(const pt::ptree &p, const std::string &key, std::int64_t def, std::int64_t min, std::int64_t max,
+			 std::int64_t ns_per_unit)
 {
-	return p.get<std::int64_t>(key, def_ms) * 1'000'000;
+	std::int64_t v = def;
+	if (auto raw = p.get_optional<std::string>(key)) {
+		std::size_t used = 0;
+		try {
+			v = std::stoll(*raw, &used);
+		} catch (const std::exception &) {
+			used = 0;
+		}
+		if (used == 0 || used != raw->size())
+			throw std::runtime_error("manifest: policy '" + key + "' must be an integer");
+	}
+	if (v < min || v > max)
+		throw std::runtime_error("manifest: policy '" + key + "' = " + std::to_string(v) + " outside " + std::to_string(min) +
+					 ".." + std::to_string(max));
+	if (v > std::numeric_limits<std::int64_t>::max() / ns_per_unit)
+		throw std::runtime_error("manifest: policy '" + key + "' overflows");
+	return v * ns_per_unit;
 }
 
 } // namespace
@@ -99,13 +135,16 @@ Manifest load_manifest(const std::string &path, const std::map<std::string, std:
 
 	Manifest m;
 	if (auto p = root.get_child_optional("policy")) {
-		m.policy.heartbeat_period_ns = ms(*p, "heartbeat_period_ms", 500);
+		constexpr std::int64_t kMsNs = 1'000'000, kSNs = 1'000'000'000;
+		constexpr std::int64_t kAnyMs = std::numeric_limits<std::int64_t>::max() / kMsNs;
+		// heartbeat_period_ms keeps its earlier rule (positive); only the conversion overflow is added
+		m.policy.heartbeat_period_ns = time_policy(*p, "heartbeat_period_ms", 500, 1, kAnyMs, kMsNs);
 		m.policy.missed_heartbeats = p->get<int>("missed_heartbeats", 3);
-		m.policy.restart_delay_ns = ms(*p, "restart_delay_ms", 500);
+		m.policy.restart_delay_ns = time_policy(*p, "restart_delay_ms", 500, 1, 3000, kMsNs);
 		m.policy.max_failures = p->get<int>("max_failures", 3);
-		m.policy.failure_window_ns = p->get<std::int64_t>("failure_window_s", 60) * 1'000'000'000;
-		m.policy.startup_timeout_ns = ms(*p, "startup_timeout_ms", 5000);
-		m.policy.stop_timeout_ns = ms(*p, "stop_timeout_ms", 2000);
+		m.policy.failure_window_ns = time_policy(*p, "failure_window_s", 60, 1, 3600, kSNs);
+		m.policy.startup_timeout_ns = time_policy(*p, "startup_timeout_ms", 5000, 100, 60000, kMsNs);
+		m.policy.stop_timeout_ns = time_policy(*p, "stop_timeout_ms", 2000, 100, 30000, kMsNs);
 	}
 	if (m.policy.heartbeat_period_ns <= 0 || m.policy.missed_heartbeats < 1 || m.policy.max_failures < 1)
 		throw std::runtime_error("manifest: invalid policy");

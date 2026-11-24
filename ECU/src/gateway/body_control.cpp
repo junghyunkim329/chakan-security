@@ -46,11 +46,17 @@ Decision BodyControl::request(std::uint16_t method, std::uint16_t client, const 
 	if (lin.health(slave).degraded)
 		return reject(kLinTimeout, ""); // the slave is in communication error: no LIN command is created
 
-	if (method == kSetWindowPosition)
-		lin.command_window(v, now_ns);
-	else
-		lin.command_light(v == 1, now_ns);
-	pending_.push_back({token, method, now_ns});
+	for (auto it = pending_.begin(); it != pending_.end();) {
+		if (it->method == method) {
+			rejected_[kStateRejected]++;
+			superseded_.push_back({it->token, kStateRejected});
+			it = pending_.erase(it);
+		} else {
+			++it;
+		}
+	}
+	const std::uint64_t seq = method == kSetWindowPosition ? lin.command_window(v, now_ns) : lin.command_light(v == 1, now_ns);
+	pending_.push_back({token, method, now_ns, seq});
 	d.pending = true;
 	return d;
 }
@@ -58,12 +64,14 @@ Decision BodyControl::request(std::uint16_t method, std::uint16_t client, const 
 std::vector<Completion> BodyControl::poll(std::int64_t now_ns, const lin::LinMaster &lin)
 {
 	std::vector<Completion> done;
+	done.swap(superseded_);
 	for (auto it = pending_.begin(); it != pending_.end();) {
 		const bool window = it->method == kSetWindowPosition;
+		const std::uint64_t tx_seq = window ? lin.window_cmd_tx_seq() : lin.light_cmd_tx_seq();
 		const std::int64_t tx = window ? lin.window_cmd_tx_ns() : lin.light_cmd_tx_ns();
 		const std::int64_t st = lin.status_ns(window ? lin::Slave::Window : lin::Slave::Light);
-		// confirmed: the command frame went out after the request and the slave answered after that frame
-		if (tx >= it->issued_ns && st > tx) {
+		// confirmed: the frame carrying this request's command went out and the slave answered after that frame
+		if (tx_seq >= it->cmd_seq && st > tx) {
 			done.push_back({it->token, kAccepted});
 			it = pending_.erase(it);
 		} else if (now_ns - it->issued_ns >= confirm_timeout_ns_) {

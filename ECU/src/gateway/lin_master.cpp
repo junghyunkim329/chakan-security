@@ -37,12 +37,13 @@ void LinMaster::wake(std::int64_t now_ns)
 		wake_pending_ = true;
 }
 
-void LinMaster::command_window(std::uint8_t target, std::int64_t now_ns)
+std::uint64_t LinMaster::command_window(std::uint8_t target, std::int64_t now_ns)
 {
 	window_target_ = target;
 	window_cancel_ = false;
 	window_cmd_new_ = true;
 	wake(now_ns);
+	return ++window_cmd_seq_;
 }
 
 void LinMaster::cancel_window(std::int64_t now_ns)
@@ -50,14 +51,16 @@ void LinMaster::cancel_window(std::int64_t now_ns)
 	window_cancel_ = true;
 	window_target_.reset();
 	window_cmd_new_ = true;
+	++window_cmd_seq_;
 	wake(now_ns);
 }
 
-void LinMaster::command_light(bool on, std::int64_t now_ns)
+std::uint64_t LinMaster::command_light(bool on, std::int64_t now_ns)
 {
 	light_target_ = on ? 100 : 0;
 	light_cmd_new_ = true;
 	wake(now_ns);
+	return ++light_cmd_seq_;
 }
 
 std::vector<WireFrame> LinMaster::tick(std::int64_t now_ns)
@@ -129,6 +132,7 @@ void LinMaster::emit_slot(std::int64_t now_ns, std::vector<WireFrame> &out)
 		if (window_cmd_new_) {
 			window_cmd_new_ = false;
 			window_cmd_tx_ns_ = now_ns;
+			window_tx_seq_ = window_cmd_seq_;
 		}
 	} else if (id == SIL_LIN_BODY_LIGHTCOMMAND_ID) {
 		p[SIL_LIN_BODY_LIGHTCOMMAND_TARGET_BYTE] = light_target_;
@@ -136,6 +140,7 @@ void LinMaster::emit_slot(std::int64_t now_ns, std::vector<WireFrame> &out)
 		if (light_cmd_new_) {
 			light_cmd_new_ = false;
 			light_cmd_tx_ns_ = now_ns;
+			light_tx_seq_ = light_cmd_seq_;
 		}
 	}
 	p.push_back(sil_lin_checksum(f->pid, p.data(), f->dlc));
@@ -163,7 +168,17 @@ void LinMaster::on_frame(const WireFrame &f, std::int64_t now_ns)
 		response_bad(s);
 		return;
 	}
-	response_ok(s, f.data.data(), now_ns);
+	// §6.2 payload meaning from the generated schema, before any status, health or freshness update
+	SlaveHealth &h = health_[static_cast<int>(s)];
+	switch (sil_lin_check_semantics(fr, f.data.data())) {
+	case SIL_LIN_SEM_OK:
+		response_ok(s, f.data.data(), now_ns);
+		return;
+	case SIL_LIN_SEM_RESERVED: h.sem_reserved++; break;
+	case SIL_LIN_SEM_NOT_VALID: h.sem_not_valid++; break;
+	case SIL_LIN_SEM_RANGE: h.sem_range++; break;
+	}
+	h.ok = 0; // a wrong response never counts toward the §6.3 recovery streak
 }
 
 void LinMaster::response_bad(Slave s)

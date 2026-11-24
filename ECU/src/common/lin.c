@@ -53,3 +53,19 @@ void sil_lin_put(uint8_t *payload, unsigned byte, unsigned bit, unsigned bits, u
 
 	payload[byte] = (uint8_t)((payload[byte] & ~mask) | ((value << bit) & mask));
 }
+
+sil_lin_sem_t sil_lin_check_semantics(const sil_lin_frame_t *frame, const uint8_t *payload)
+{
+	for (unsigned i = 0; i < frame->dlc; i++)
+		if (payload[i] & (uint8_t)~frame->used_mask[i])
+			return SIL_LIN_SEM_RESERVED;
+	if (frame->has_valid && !sil_lin_get(payload, frame->valid_byte, frame->valid_bit, 1))
+		return SIL_LIN_SEM_NOT_VALID;
+	for (unsigned i = frame->range_first; i < (unsigned)frame->range_first + frame->range_count; i++) {
+		const sil_lin_range_t *r = &sil_lin_ranges[i];
+		const uint8_t v = sil_lin_get(payload, r->byte, r->bit, r->bits);
+		if (v < r->min || v > r->max)
+			return SIL_LIN_SEM_RANGE;
+	}
+	return SIL_LIN_SEM_OK;
+}

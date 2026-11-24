@@ -47,19 +47,42 @@ def main() -> int:
             h.append(f"#define {sn}_BIT {s['bit']}u")
             h.append(f"#define {sn}_BITS {s['bits']}u")
         h.append("")
-    h += ["typedef struct {", "\tuint8_t id;", "\tuint8_t pid;", "\tuint8_t dlc;", "\tuint8_t publisher; /* enum sil_lin_node */",
-          "\tconst char *name;", "} sil_lin_frame_t;", "",
+    ranges = [(f, sig) for f in frames for sig in f["signals"] if "min" in sig]
+    h += ["/* signal with a defined value range (min/max in network.yaml, enums included) */",
+          "typedef struct {", "\tuint8_t byte;", "\tuint8_t bit;", "\tuint8_t bits;", "\tuint8_t min;", "\tuint8_t max;",
+          "} sil_lin_range_t;", "",
+          "typedef struct {", "\tuint8_t id;", "\tuint8_t pid;", "\tuint8_t dlc;", "\tuint8_t publisher; /* enum sil_lin_node */",
+          "\tconst char *name;",
+          "\tuint8_t used_mask[8];   /* bits owned by a signal; every other payload bit is reserved and must be 0 */",
+          "\tuint8_t has_valid;      /* 1: the frame carries a 'valid' signal that must be 1 */",
+          "\tuint8_t valid_byte;", "\tuint8_t valid_bit;",
+          "\tuint8_t range_first;    /* index into sil_lin_ranges */", "\tuint8_t range_count;",
+          "} sil_lin_frame_t;", "",
           f"#define SIL_LIN_FRAME_COUNT {len(frames)}u",
+          f"#define SIL_LIN_RANGE_COUNT {len(ranges)}u",
           "extern const sil_lin_frame_t sil_lin_frames[SIL_LIN_FRAME_COUNT];",
+          "extern const sil_lin_range_t sil_lin_ranges[SIL_LIN_RANGE_COUNT];",
           "/* frame ID per 10 ms slot, SIL_LIN_IDLE_SLOT for idle */",
           "extern const uint8_t sil_lin_schedule[SIL_LIN_SCHEDULE_SLOTS];", "",
           "#ifdef __cplusplus", "}", "#endif", "", "#endif", ""]
 
     c = ["/* Generated from config/lin/network.yaml by tools/codegen/gen_lin.py. Do not edit. */",
          '#include "sil_lin_gen.h"', "", "const sil_lin_frame_t sil_lin_frames[SIL_LIN_FRAME_COUNT] = {"]
+    first = 0
     for f in frames:
+        used = [0] * 8
+        for sig in f["signals"]:
+            used[sig["byte"]] |= ((1 << sig["bits"]) - 1) << sig["bit"]
+        valid = next((sig for sig in f["signals"] if sig["name"] == "valid"), None)
+        n_rng = sum(1 for sig in f["signals"] if "min" in sig)
+        mask = ", ".join(f"0x{m:02X}u" for m in used)
+        vb = f"1u, {valid['byte']}u, {valid['bit']}u" if valid else "0u, 0u, 0u"
         c.append(f"\t{{0x{f['id']:02X}u, 0x{protected_id(f['id']):02X}u, {f['dlc']}u, SIL_LIN_NODE_{ident(f['publisher'])}, "
-                 f"\"{f['name']}\"}},")
+                 f"\"{f['name']}\", {{{mask}}}, {vb}, {first}u, {n_rng}u}},")
+        first += n_rng
+    c += ["};", "", "const sil_lin_range_t sil_lin_ranges[SIL_LIN_RANGE_COUNT] = {"]
+    for f, sig in ranges:
+        c.append(f"\t{{{sig['byte']}u, {sig['bit']}u, {sig['bits']}u, {sig['min']}u, {sig['max']}u}}, /* {f['name']}.{sig['name']} */")
     c += ["};", "", "const uint8_t sil_lin_schedule[SIL_LIN_SCHEDULE_SLOTS] = {"]
     c.append("\t" + ", ".join("SIL_LIN_IDLE_SLOT" if x is None else f"0x{x:02X}u" for x in doc["schedule"]) + ",")
     c += ["};", ""]

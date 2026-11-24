@@ -289,7 +289,7 @@ std::string verify_process(const Ctx &c, std::size_t i, int pid, bool &ok)
 			   stat(("/run/netns/" + c.manifest.processes[i].netns).c_str(), &ns_want) == 0 &&
 			   ns_proc.st_ino == ns_want.st_ino;
 	ok = euid != 0 && ruid != 0 && suid != 0 && trim(capeff) == "0000000000000000" && trim(capprm) == "0000000000000000" &&
-	     trim(nnp) == "1" && trim(cpus) == c.manifest.processes[i].cpus && ns_ok;
+	     trim(nnp) == "1" && same_cpu_set(cpus, c.manifest.processes[i].cpus) && ns_ok;
 	return "uid=" + std::to_string(euid) + " CapEff=" + trim(capeff) + " CapPrm=" + trim(capprm) + " NoNewPrivs=" + trim(nnp) +
 	       " cpus=" + trim(cpus) + " netns=" + (ns_ok ? c.manifest.processes[i].netns : std::string("MISMATCH")) +
 	       " memory_mb=" + std::to_string(c.manifest.processes[i].memory_mb);

@@ -57,6 +57,8 @@ def load(path: Path = DEFAULT_PATH) -> dict:
             if used[s["byte"]] & mask:
                 raise LinDefinitionError(f"{f['name']}.{s['name']}: overlaps")
             used[s["byte"]] |= mask
+            if ("min" in s) != ("max" in s) or ("min" in s and not 0 <= s["min"] <= s["max"] < (1 << s["bits"])):
+                raise LinDefinitionError(f"{f['name']}.{s['name']}: min/max must both be set and fit the signal")
         frames[f["id"]] = f
     sched = doc["schedule"]
     if len(sched) * doc["bus"]["tick_ms"] != 100:
