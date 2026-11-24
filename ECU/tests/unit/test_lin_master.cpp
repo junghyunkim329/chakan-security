@@ -252,13 +252,13 @@ void test_semantic_errors()
 	// a wrong response never completes a BodyControl command
 	{
 		Bus b;
-		body::BodyControl bc({0x2002}, 5, 500 * MS);
+		body::BodyControl bc(5, 500 * MS);
 		b.run(300);
 		b.tamper = [](std::uint8_t pid, std::uint8_t *p) {
 			if (pid == SIL_LIN_BODY_WINDOWSTATUS_PID)
 				p[2] = static_cast<std::uint8_t>(p[2] & ~0x80); // valid 0
 		};
-		CHECK(bc.request(body::kSetWindowPosition, 0x2002, {30}, b.now, true, b.master, 1).pending);
+		CHECK(bc.request(body::kSetWindowPosition, true, {30}, b.now, true, b.master, 1).pending);
 		std::vector<body::Completion> done;
 		for (int i = 0; i < 700 && done.empty(); i++) {
 			b.step();
@@ -310,10 +310,10 @@ void test_body_control_latest_wins()
 	// two window targets before one command slot: only the second reaches the slave
 	{
 		Bus b;
-		body::BodyControl bc({0x2002}, 5, 500 * MS);
+		body::BodyControl bc(5, 500 * MS);
 		b.run(205); // just after a command slot, so both requests wait for the same next slot
-		CHECK(bc.request(body::kSetWindowPosition, 0x2002, {30}, b.now, true, b.master, 1).pending);
-		CHECK(bc.request(body::kSetWindowPosition, 0x2002, {70}, b.now, true, b.master, 2).pending);
+		CHECK(bc.request(body::kSetWindowPosition, true, {30}, b.now, true, b.master, 1).pending);
+		CHECK(bc.request(body::kSetWindowPosition, true, {70}, b.now, true, b.master, 2).pending);
 		const auto done = collect(b, bc, 2);
 		CHECK_EQ_INT(code_of(done, 1), body::kStateRejected);
 		CHECK_EQ_INT(code_of(done, 2), body::kAccepted);
@@ -325,10 +325,10 @@ void test_body_control_latest_wins()
 	// the same for InteriorLight
 	{
 		Bus b;
-		body::BodyControl bc({0x2002}, 5, 500 * MS);
+		body::BodyControl bc(5, 500 * MS);
 		b.run(225);
-		CHECK(bc.request(body::kSetInteriorLight, 0x2002, {1}, b.now, true, b.master, 1).pending);
-		CHECK(bc.request(body::kSetInteriorLight, 0x2002, {0}, b.now, true, b.master, 2).pending);
+		CHECK(bc.request(body::kSetInteriorLight, true, {1}, b.now, true, b.master, 1).pending);
+		CHECK(bc.request(body::kSetInteriorLight, true, {0}, b.now, true, b.master, 2).pending);
 		const auto done = collect(b, bc, 2);
 		CHECK_EQ_INT(code_of(done, 1), body::kStateRejected);
 		CHECK_EQ_INT(code_of(done, 2), body::kAccepted);
@@ -338,12 +338,12 @@ void test_body_control_latest_wins()
 	// a burst over several slots: each request is either confirmed by its own frame or replaced, never both
 	{
 		Bus b;
-		body::BodyControl bc({0x2002}, 5, 500 * MS);
+		body::BodyControl bc(5, 500 * MS);
 		b.run(205);
 		const std::uint8_t targets[4] = {10, 20, 30, 40};
 		std::vector<body::Completion> all;
 		for (std::uint64_t i = 0; i < 4; i++) {
-			CHECK(bc.request(body::kSetWindowPosition, 0x2002, {targets[i]}, b.now, true, b.master, i + 1).pending);
+			CHECK(bc.request(body::kSetWindowPosition, true, {targets[i]}, b.now, true, b.master, i + 1).pending);
 			for (int k = 0; k < 30; k++) { // 30 ms: sometimes a command slot passes, sometimes not
 				b.step();
 				for (const auto &c : bc.poll(b.now, b.master))
@@ -367,10 +367,10 @@ void test_body_control_latest_wins()
 	// requests of different methods do not replace each other
 	{
 		Bus b;
-		body::BodyControl bc({0x2002}, 5, 500 * MS);
+		body::BodyControl bc(5, 500 * MS);
 		b.run(205);
-		CHECK(bc.request(body::kSetWindowPosition, 0x2002, {50}, b.now, true, b.master, 1).pending);
-		CHECK(bc.request(body::kSetInteriorLight, 0x2002, {1}, b.now, true, b.master, 2).pending);
+		CHECK(bc.request(body::kSetWindowPosition, true, {50}, b.now, true, b.master, 1).pending);
+		CHECK(bc.request(body::kSetInteriorLight, true, {1}, b.now, true, b.master, 2).pending);
 		const auto done = collect(b, bc, 2);
 		CHECK_EQ_INT(code_of(done, 1), body::kAccepted);
 		CHECK_EQ_INT(code_of(done, 2), body::kAccepted);
