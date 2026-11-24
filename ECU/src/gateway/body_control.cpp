@@ -6,12 +6,12 @@ namespace {
 constexpr std::int64_t kSecond = 1'000'000'000;
 }
 
-BodyControl::BodyControl(std::set<std::uint16_t> allowed_clients, unsigned max_per_second, std::int64_t confirm_timeout_ns)
-	: allowed_(std::move(allowed_clients)), max_per_second_(max_per_second), confirm_timeout_ns_(confirm_timeout_ns)
+BodyControl::BodyControl(unsigned max_per_second, std::int64_t confirm_timeout_ns)
+	: max_per_second_(max_per_second), confirm_timeout_ns_(confirm_timeout_ns)
 {
 }
 
-Decision BodyControl::request(std::uint16_t method, std::uint16_t client, const std::vector<std::uint8_t> &payload,
+Decision BodyControl::request(std::uint16_t method, bool protected_transport, const std::vector<std::uint8_t> &payload,
 			      std::int64_t now_ns, bool ignition_ok, lin::LinMaster &lin, std::uint64_t token)
 {
 	Decision d;
@@ -22,8 +22,8 @@ Decision BodyControl::request(std::uint16_t method, std::uint16_t client, const 
 		return d;
 	};
 
-	if (!allowed_.count(client))
-		return reject(kStateRejected, "body_control_client_not_allowed client=" + std::to_string(client));
+	if (!protected_transport)
+		return reject(kStateRejected, "body_control_unprotected_transport");
 	if (method != kSetWindowPosition && method != kSetInteriorLight)
 		return reject(kInvalidArgument, "body_control_unknown_method");
 	if (payload.size() != 1)

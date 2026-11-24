@@ -4,17 +4,23 @@
 # third-party sources and local installs (recreated by scripts/setup/build-vsomeip.sh, versions pinned there)
 /third_party/
 
-# test runs: keep only summaries and verdicts as evidence (project.md §15.2: captures and raw logs stay out of Git)
-/docs/results/**
-!/docs/results/*/
-!/docs/results/*/summary.md
-!/docs/results/*/verdict.json
-!/docs/results/*/report.json
-!/docs/results/*/deployed-sha256.txt
+# Per-run experiment output stays local, including summaries and verdicts.
+# Keep curated verification notes and reproduction instructions in docs/evidence.
+/docs/results/
+/ECU/docs/results/
+/IDS/docs/results/
+
+# Completed agent work plans and session artifacts are local working records.
+# Durable specifications belong outside these directories.
+/docs/superpowers/
+/ECU/docs/superpowers/
+/IDS/docs/superpowers/
+/.superpowers/
 
 # Python caches
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # personal
 /docs/check/*

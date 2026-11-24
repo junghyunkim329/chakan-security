@@ -78,9 +78,10 @@ struct BodyNode {
 	int fd = -1;
 	std::uint64_t events_sent = 0, security_events = 0, requests = 0;
 
-	// §7.3 allowlist: the AP BodyControl client (practice selection); 5 requests/s per method; 500 ms to confirm
+	// §7.3: caller authorization is enforced before this process by the AP principal and protected transport;
+	// this class retains request validation, vehicle-state gating, rate limiting, and LIN confirmation.
 	BodyNode(int wire, std::int64_t now)
-		: master(now), control({0x2002}, 5, 500'000'000), fd(wire)
+		: master(now), control(5, 500'000'000), fd(wire)
 	{
 	}
 };
@@ -222,7 +223,7 @@ void on_body_request(Gateway &gw, const std::shared_ptr<vsomeip::message> &req)
 		std::lock_guard<std::mutex> lk(gw.body->mtx);
 		const std::uint64_t token = gw.body->next_token++;
 		gw.body->requests++;
-		d = gw.body->control.request(req->get_method(), req->get_client(), data, now_ns(), ignition, gw.body->master, token);
+		d = gw.body->control.request(req->get_method(), req->is_reliable(), data, now_ns(), ignition, gw.body->master, token);
 		if (d.pending)
 			gw.body->pending[token] = req;
 		if (!d.security_event.empty())

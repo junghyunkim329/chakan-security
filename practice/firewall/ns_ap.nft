@@ -1,6 +1,7 @@
 # ns_ap 방화벽 (연습용)
 # AP는 Gateway에게 서비스를 "요청하는 쪽"이다. 상대는 Gateway(10.10.0.1) 하나뿐.
 # 규칙: 기본은 전부 차단(drop), 아래 적힌 것만 통과(accept).
+# setup.sh가 deployment의 BodyControl UID를 body_uid define으로 전달한다.
 
 # 이미 있으면 지우고 새로 만든다 (여러 번 적용해도 결과가 같다)
 table inet ns_fw
@@ -13,6 +14,8 @@ table inet ns_fw {
 
 		iif "lo" accept                          # 방 안 내선(lo)은 허용
 		ct state established,related accept     # 내가 먼저 건 대화의 답장은 허용
+		# BodyControl IPsec response의 outer ESP. 복호화된 TCP는 위 established rule로 다시 평가된다.
+		iifname "veth_ap" ip saddr 10.10.0.1 ip daddr 10.10.0.10 ip protocol esp accept
 
 		# SOME/IP-SD: Gateway가 "이런 서비스 있어요" 알림 (UDP 30490)
 		iifname "veth_ap" ip saddr 10.10.0.1 udp sport 30490 udp dport 30490 accept
@@ -28,11 +31,20 @@ table inet ns_fw {
 
 		oif "lo" accept
 		ct state established,related accept
+		# XFRM이 만든 outer ESP는 소켓 UID가 없으므로 고정 peer·주소로 별도 허용한다.
+		oifname "veth_ap" ip saddr 10.10.0.10 ip daddr 10.10.0.1 ip protocol esp counter accept comment "bodycontrol_esp_sent"
 
 		# SOME/IP-SD: "이 서비스 찾아요/구독할게요" (Gateway 또는 SD multicast 주소로)
 		oifname "veth_ap" ip daddr { 10.10.0.1, 224.244.224.245 } udp sport 30490 udp dport 30490 accept
-		# SOME/IP method 요청(30502, 30512)과 DoIP 진단 연결(13400), TCP
-		oifname "veth_ap" ip daddr 10.10.0.1 tcp dport { 30502, 30512, 13400 } accept
+		# VehicleState method와 DoIP 진단 연결
+		oifname "veth_ap" ip daddr 10.10.0.1 tcp dport { 30502, 13400 } accept
+		# BodyControl은 self-declared SOME/IP client ID가 아니라 배포된 OS principal만 송신할 수 있다.
+		# 단계별 counter는 키를 노출하지 않고 UID/XFRM 경계 중 어디에서 거부됐는지 남긴다.
+		oifname "veth_ap" ip daddr 10.10.0.1 tcp dport 30512 counter comment "bodycontrol_tcp_observed"
+		oifname "veth_ap" meta skuid $body_uid ip daddr 10.10.0.1 tcp dport 30512 counter comment "bodycontrol_uid_matched"
+		oifname "veth_ap" ip daddr 10.10.0.1 tcp dport 30512 ipsec out reqid 1100 counter comment "bodycontrol_ipsec_matched"
+		# UID와 required XFRM policy가 모두 결합된 요청만 AP 밖으로 내보낸다.
+		oifname "veth_ap" meta skuid $body_uid ip daddr 10.10.0.1 tcp dport 30512 ipsec out reqid 1100 counter accept comment "bodycontrol_authorized"
 		# DoIP: "진단 가능한 차량 있나요?" (UDP 13400, 개별 또는 방송)
 		oifname "veth_ap" ip daddr { 10.10.0.1, 10.10.0.255, 255.255.255.255 } udp dport 13400 accept
 	}

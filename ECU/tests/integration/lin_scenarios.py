@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Phase 6 scenario test: LIN body domain + BodyControl (project.md §6, §7.3), practice configuration hj_*.
 
-usage (root): lin_scenarios.py <out_dir> <repo_root> <run_as_user>
+usage (root): lin_scenarios.py <out_dir> <repo_root> <run_as_user> <body_uid> <body_gid>
 
   ns_vehicle: ecu_engine (ignition for the vehicle-state check)
   ns_body   : lin_slave door/window/light (+ test control sockets), can_capture on the LIN wire
@@ -19,11 +19,21 @@ import threading
 import time
 from pathlib import Path
 
-OUT, ROOT, RUN_AS = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+OUT, ROOT, RUN_AS, BODY_UID, BODY_GID = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4], sys.argv[5]
 B = ROOT / "build"
 RUN = OUT / "run"
+VSOMEIP_RUNTIME = Path("/run/chakan-security/vsomeip")
+BODY_RUNTIME = Path("/run/chakan-security/body-runtime")
+BODY_CLIENT = BODY_RUNTIME / "bin/body_control_client"
+BODY_ENV = {"LD_LIBRARY_PATH": BODY_RUNTIME / "lib"}
 sys.path.insert(0, str(ROOT / "tools"))
 from sil_can.lin import enhanced_checksum, protected_id  # noqa: E402
+sys.path.insert(0, str(ROOT / "ECU/tools/security"))
+from scenario_evidence import contiguous_positive_steps  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from body_boundary_probes import BoundaryProbes  # noqa: E402
+
+boundary = BoundaryProbes(ROOT, OUT, BODY_UID, BODY_GID, RUN_AS)
 
 results = []
 procs = {}
@@ -37,8 +47,21 @@ def check(group, name, ok, value):
     print(f"{'PASS' if ok else 'FAIL'}  [{group}] {name}: {value}", flush=True)
 
 
-def start(name, ns, *cmd, env=None, stdin=None):
-    pre = ["ip", "netns", "exec", ns, "setpriv", f"--reuid={RUN_AS}", f"--regid={RUN_AS}", "--init-groups", "--reset-env"]
+def boundary_check(name, action):
+    try:
+        report = action()
+    except Exception as error:
+        report = boundary.save({"probe": name, "pass": False, "error": f"{type(error).__name__}: {error}"})
+    check("권한 경계", name, report.get("pass", False), report)
+
+
+def start(name, ns, *cmd, env=None, stdin=None, uid=RUN_AS, gid=None, root=False):
+    gid = uid if gid is None else gid
+    if root:
+        pre = ["ip", "netns", "exec", ns]
+    else:
+        groups = "--init-groups" if uid == RUN_AS else "--clear-groups"
+        pre = ["ip", "netns", "exec", ns, "setpriv", f"--reuid={uid}", f"--regid={gid}", groups, "--reset-env"]
     if env:
         pre += ["env"] + [f"{k}={v}" for k, v in env.items()]
     p = subprocess.Popen(pre + [str(c) for c in cmd], stdin=stdin, stdout=subprocess.PIPE if stdin else open(OUT / f"{name}.out", "w"),
@@ -64,14 +87,17 @@ def control(role, cmd):
     s.close()
 
 
-def client_reader(p):
-    for line in p.stdout:
-        try:
-            d = json.loads(line)
-        except ValueError:
-            continue
-        with lines_lock:
-            lines.append((time.monotonic(), d))
+def client_reader(name, p):
+    with open(OUT / f"{name}.runtime.log", "w") as runtime_log:
+        for line in p.stdout:
+            runtime_log.write(line)
+            runtime_log.flush()
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            with lines_lock:
+                lines.append((time.monotonic(), d))
 
 
 def send(cmd):
@@ -130,9 +156,27 @@ def inject_bad_header(pid):
     return time.monotonic()
 
 
+def capture_security_diagnostics():
+    """Persist keyless XFRM/nft evidence so a failed run identifies the broken boundary."""
+    commands = {
+        "xfrm_ap_states.txt": ["ip", "-n", "ns_ap", "-s", "xfrm", "state", "list", "nokeys"],
+        "xfrm_ap_policies.txt": ["ip", "-n", "ns_ap", "-s", "xfrm", "policy", "list"],
+        "xfrm_gateway_states.txt": ["ip", "-n", "ns_gateway", "-s", "xfrm", "state", "list", "nokeys"],
+        "xfrm_gateway_policies.txt": ["ip", "-n", "ns_gateway", "-s", "xfrm", "policy", "list"],
+        "nft_ap.txt": ["ip", "netns", "exec", "ns_ap", "nft", "-a", "list", "ruleset"],
+        "nft_gateway.txt": ["ip", "netns", "exec", "ns_gateway", "nft", "-a", "list", "ruleset"],
+        "xfrm_ap_stats.txt": ["ip", "netns", "exec", "ns_ap", "cat", "/proc/net/xfrm_stat"],
+        "xfrm_gateway_stats.txt": ["ip", "netns", "exec", "ns_gateway", "cat", "/proc/net/xfrm_stat"],
+    }
+    for filename, command in commands.items():
+        with open(OUT / filename, "w") as output:
+            subprocess.run(command, stdout=output, stderr=subprocess.STDOUT, text=True, check=False)
+
+
 def main():
     RUN.mkdir(parents=True, exist_ok=True)
     os.chown(RUN, *(lambda pw: (pw.pw_uid, pw.pw_gid))(__import__("pwd").getpwnam(RUN_AS)))
+    start("eth_capture", "ns_gateway", "tcpdump", "-i", "veth_gw", "-nn", "-l", root=True)
     start("capture", "ns_body", "python3", "-I", ROOT / "ECU/tools/diag/can_capture.py", "vxlin_body", OUT / "lin.jsonl",
           "0x001", "0x002", "0x003")
     start("engine", "ns_vehicle", B / "ecu_engine", "--iface", "vxcan_veh")
@@ -142,9 +186,10 @@ def main():
     start("gateway", "ns_gateway", B / "vehicle_gateway", "--iface", "vxcan_gw", "--lin-iface", "vxlin_gw",
           env={"VSOMEIP_CONFIGURATION": ROOT / "config/vsomeip/gateway.json"})
     time.sleep(1.0)
-    client = start("client", "ns_ap", B / "body_control_client", env={"VSOMEIP_CONFIGURATION": ROOT / "config/vsomeip/body_client.json"},
-                   stdin=subprocess.PIPE)
-    threading.Thread(target=client_reader, args=(client,), daemon=True).start()
+    client = start("client", "ns_ap", BODY_CLIENT,
+                   env={**BODY_ENV, "VSOMEIP_CONFIGURATION": VSOMEIP_RUNTIME / "body_client.json"},
+                   stdin=subprocess.PIPE, uid=BODY_UID, gid=BODY_GID)
+    threading.Thread(target=client_reader, args=("client", client), daemon=True).start()
     try:
         scenario()
     finally:
@@ -155,6 +200,7 @@ def main():
         time.sleep(0.5)
         for name in list(procs):
             stop(name)
+        capture_security_diagnostics()
     evaluate()
 
 
@@ -283,20 +329,49 @@ def scenario():
     check(G4, "sleep 중 명령 → wakeup 후 accepted(0)", code(r) == 0 and ev is not None, f"{r}")
     time.sleep(0.8)
 
-    # ---- allowlist (client ID not allowed) ----
+    # ---- authenticated principal, independent of SOME/IP client ID ----
+    time.sleep(1.1)
+    boundary_check("비신뢰 UID의 직접 TCP socket은 AP UID 방화벽에서 거부", boundary.direct)
+    boundary_check("대체 client ID의 실제 proxy UDS 연결은 권한 경계에서 거부",
+                   lambda: boundary.proxy(BODY_CLIENT, VSOMEIP_RUNTIME / "body_client_alt_id.json", "0x2002", "proxy_alt_id"))
+
     send("quit")
     time.sleep(0.5)
     stop("client")
     with lines_lock:
         lines.clear()
-    c2 = start("client_untrusted", "ns_ap", B / "body_control_client",
-               env={"VSOMEIP_CONFIGURATION": ROOT / "config/vsomeip/body_client_untrusted.json"}, stdin=subprocess.PIPE)
+    c2 = start("client_trusted_alt_id", "ns_ap", BODY_CLIENT,
+               env={**BODY_ENV, "VSOMEIP_CONFIGURATION": VSOMEIP_RUNTIME / "body_client_alt_id.json"}, stdin=subprocess.PIPE,
+               uid=BODY_UID, gid=BODY_GID)
     procs["client"] = c2
-    threading.Thread(target=client_reader, args=(c2,), daemon=True).start()
+    threading.Thread(target=client_reader, args=("client_trusted_alt_id", c2), daemon=True).start()
     time.sleep(2.0)
     t = send("window 60")
     r = wait_response(t, 3)
-    check(G1, "허용 목록에 없는 client ID 0x2FFF → 거부(2)", code(r) == 2, r)
+    _, ev = wait_event(t, lambda d: d["window"] == 60, 3)
+    check(G1, "신뢰 OS 주체는 대체 client ID 0x2FFF로도 정상 요청", code(r) == 0 and ev is not None, r)
+
+    boundary_check("승인 client ID를 사용한 비신뢰 실제 proxy도 UDS 연결 거부",
+                   lambda: boundary.proxy(BODY_CLIENT, VSOMEIP_RUNTIME / "body_client.json", "0x2FFF", "proxy_allowed_id"))
+
+    # Normal capture ends BEFORE deliberate plaintext injection. Preserve an
+    # independent capture for normal traffic after the boundary probes as well.
+    stop("eth_capture")
+    try:
+        for report in boundary.unprotected():
+            check("권한 경계", report["probe"] + " Gateway 입력 거부", report["pass"], report)
+    except Exception as error:
+        boundary_check("Gateway 비보호 주입 도구 오류", lambda: {"pass": False, "error": str(error)})
+    restored = {r["probe"]: r for r in boundary.reports if r["probe"].endswith("_restoration")}
+    expected = {name + "_restoration" for name in
+                ("direct_socket", "unprotected_tcp", "unprotected_udp", "proxy_alt_id", "proxy_allowed_id")}
+    check("권한 경계", "임시 설정 제거·기존 방화벽과 XFRM 정책 원복 확인",
+          set(restored) == expected and all(r["pass"] for r in restored.values()), restored)
+    start("eth_capture_after", "ns_gateway", "tcpdump", "-i", "veth_gw", "-nn", "-l", root=True)
+    time.sleep(1.1)
+    t = send("window 60")
+    r = wait_response(t, 3)
+    check(G1, "경계 시험 후에도 신뢰 principal의 명령 accepted(0)", code(r) == 0, r)
 
 
 def evaluate():
@@ -315,7 +390,7 @@ def evaluate():
             if d[-1] != enhanced_checksum(last_pid, d[:-1]):
                 bad_ck.append(f["t"])
             elif last_pid == protected_id(0x14):
-                light.append(d[0])
+                light.append((f["t"], d[0]))
             last_pid = None
     check(G4, "모든 header의 PID parity가 표준 표와 일치 (주입한 1건 제외)",
           sum(1 for _, p in headers if p not in {protected_id(i) for i in SCHED}) == 1, f"{len(headers)} headers")
@@ -348,12 +423,19 @@ def evaluate():
     check(G4, "wakeup 신호 후 100 ms 이상 지나 0 ms slot(0x11)부터 재시작",
           wake and first and first[1] == 0x11 and first[0] - wake[0]["t"] >= 0.099, f"{wake and round((first[0] - wake[0]['t']) * 1000, 1)} ms, PID {first and hex(first[1])}")
 
-    up = [b - a for a, b in zip(light, light[1:]) if b > a]
+    up = contiguous_positive_steps(light)
     check(G4, "실내등 fade: 100 ms마다 10%씩 밝아짐", up and max(up) <= 10 and 10 in up, sorted(set(up)))
+
+    for label in ("eth_capture", "eth_capture_after"):
+        path = OUT / f"{label}.out"
+        ethernet = path.read_text() if path.exists() else ""
+        clear_body = [line for line in ethernet.splitlines() if ".30512" in line]
+        check("명령·응답", f"정상 구간 {label}: ESP 관찰·clear TCP/30512 없음",
+              "ESP(" in ethernet and not clear_body, f"esp={'ESP(' in ethernet}, clear={len(clear_body)}")
 
     ok = all(r["pass"] for r in results)
     gw = [l for l in (OUT / "gateway.out").read_text().splitlines() if l.startswith("{")]  # vSomeIP also logs to stdout
-    groups = ["명령·응답", "응답 누락", "복구", "LIN 프로토콜"]
+    groups = ["명령·응답", "권한 경계", "응답 누락", "복구", "LIN 프로토콜"]
     md = ["# Phase 6 LIN 차체 도메인 시나리오 시험 (연습 구성 hj_*)", "", f"- 결과: **{'PASS' if ok else 'FAIL'}**",
           f"- 기준 {sum(r['pass'] for r in results)}/{len(results)} 통과", ""]
     for g in groups:
@@ -363,7 +445,7 @@ def evaluate():
         md.append("")
     md += ["## Gateway 보고", "", "```json", gw[-1] if gw else "(없음)", "```", ""]
     (OUT / "summary.md").write_text("\n".join(md), encoding="utf-8")
-    (OUT / "verdict.json").write_text(json.dumps({"pass": ok, "results": results}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    (OUT / "verdict.json").write_text(json.dumps({"pass": ok, "results": results, "boundary_probes": boundary.reports}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print("\n".join(md))
     sys.exit(0 if ok else 1)
 

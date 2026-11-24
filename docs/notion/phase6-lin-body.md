@@ -95,7 +95,7 @@ project.md에 없어서 정한 값. 팀 공식 문서에는 반영하지 않음.
 | Slave 버스 무활동 sleep | 4초 | LIN 2.x |
 | 창문 명령 거부 조건 | 점화 OFF 또는 엔진 메시지가 valid·fresh가 아님 | 실차에서 창문은 점화 상태에 묶이는 경우가 일반적. 실내등은 항상 허용 |
 | rate limit | 메서드별 초당 5회 | 사람이 누르는 속도보다 충분히 크고 반복 공격은 막음 |
-| 허용 목록 | SOME/IP client ID 0x2002 | 시험 클라이언트. client ID는 위조 가능하므로 실제 인증이 아님 |
+| 요청자 권한 | 전용 OS UID/GID + vSomeIP UNIX credential policy + TCP/30512 IPsec | client ID는 routing/correlation 전용. AP의 다른 principal과 ECU 간 위조를 계층적으로 차단 |
 | 실내등 명령 | 1 → 밝기 100 fade, 0 → 0 fade | §7.3은 0/1만 정함 |
 | event 주기 | 100ms | LIN 한 주기 |
 
@@ -108,7 +108,7 @@ project.md에 없어서 정한 값. 팀 공식 문서에는 반영하지 않음.
 | 시험 | 결과 | 내용 |
 | --- | --- | --- |
 | `test_lin` | ✅ 268 checks | parity 표준 표(0x10→0x50 등, 64개 전부), LIN 규격 checksum 예제(0xE6), 스케줄 표, Door 초기값·입력, 창문 5% 이동·취소·장애물·checksum 오류 무시, 실내등 fade, 응답 중단·손상 주입, parity 오류 무시, 4초 버스 sleep |
-| `test_lin_master` | ✅ 113 checks | **실제 Slave 로직과 Master를 1ms 단위 가상 버스로 연결**: 스케줄 순서·10ms·40ms 간격, 창문·실내등·문 상태 반영, 3회 누락 → 통신 오류 → 2회로는 미복구 → 3회 복구, checksum 오류 누적, 5초 sleep·버스 조용함·wakeup 100ms 후 0x11부터, BodyControl 허용 목록·길이·범위·점화·rate limit·확인 응답·LIN timeout |
+| `test_lin_master` | ✅ | **실제 Slave 로직과 Master를 1ms 단위 가상 버스로 연결**: 스케줄 순서·10ms·40ms 간격, 창문·실내등·문 상태 반영, 3회 누락·복구, checksum 오류, sleep/wakeup, BodyControl 길이·범위·점화·rate limit·확인 응답·LIN timeout. 요청자 인증은 network integration 경계에서 별도 시험 |
 | 이전 Phase 시험 | ✅ | 전체 13개 통과 |
 | cppcheck / shellcheck | ✅ | 경고 0 |
 
@@ -201,18 +201,21 @@ exit
 
 ## 7. 주장할 수 있는 것 / 없는 것
 
-✅ 주장 가능 (연습 구성, 시나리오 1회 + 단위 시험)
+✅ 기존 시나리오에서 주장 가능
 - §6.2 스케줄·parity·checksum, §6.3 Slave 동작·누락·복구, sleep/wakeup이 실제 프로세스에서 동작
-- BodyControl의 허용 목록·범위·rate limit·점화 상태 검사와 LIN timeout 응답
+- BodyControl의 범위·rate limit·점화 상태 검사와 LIN timeout 응답
 - AP → SOME/IP → Gateway → LIN → 차체 ECU 명령 경로와 반대 방향 상태 event
+
+2026-11-23 요청자 경계 재검증: `docs/results/20261123-181657_lin/summary.md`에서 38/38 통과. 신뢰 UID의 client ID `0x2002`와 `0x2FFF` 요청 성공, 다른 UID의 routing manager 시작 시도는 lock 권한 오류로 차단, veth에서 ESP 관찰 및 평문 TCP/30512 미관찰. 이 결과는 현재 시험 구성의 관찰 범위이며 직접 TCP socket 주입과 실제 proxy mode 접속의 별도 시험은 후속 보강 대상이다.
 
 ❌ 아직 주장 불가
 - 반복 실행에 따른 시간 분포 (1회 측정)
-- 공식 구성(`ns_*`)에서의 동작
+- 별도의 양산 ECU 배포 구성에서의 동작
 
 ⚠️ 한계 (§6.2 명시)
 - UART break, sync 파형, 전압, 실제 baud rate·타이밍, EMC는 재현하지 않음 (논리 동작만)
 - Slave가 먼저 깨우는 wakeup(문 열림 등)은 구현하지 않음 → sleep 중 문 상태 변화는 다음 wakeup 때 반영
 - 진단 frame(0x3C/0x3D)·UDS-on-LIN은 범위 밖
-- 허용 목록의 client ID는 위조 가능 → 실제 요청자 인증이 아님
-- 연습 구성(`hj_*`) 전용. 공식 구성(`ns_*`)에는 차체 방이 없음
+- IPsec key는 매 setup에서 생성하는 SIL용 임시 key임. OEM PKI·장기 key provisioning/rotation과 AUTOSAR IAM 적합성은 주장하지 않음
+- 전용 BodyControl UID/GID가 침해되거나 root/CAP_NET_ADMIN 또는 Gateway namespace가 침해된 경우는 요청자 위협모델 밖
+- 현재 practice 구성은 `ns_ap`, `ns_gateway`, `ns_vehicle`, `ns_body`를 사용함. 과거 문서와 결과의 `hj_*` 표기는 이전 namespace 이름임

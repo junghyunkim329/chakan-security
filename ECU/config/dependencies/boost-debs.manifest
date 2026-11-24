@@ -1,0 +1,8 @@
+# Approved Ubuntu amd64 Boost inputs. Fields: package<TAB>version<TAB>architecture<TAB>filename<TAB>size<TAB>sha256
+# Baseline: authenticated local Ubuntu APT package index, independently compared with local files 2026-11-23.
+# Changes require review against authenticated archive metadata; never regenerate from downloaded bytes alone.
+libboost1.90-dev	1.90.0-6ubuntu1	amd64	libboost1.90-dev_1.90.0-6ubuntu1_amd64.deb	11452296	7b89698c907fd5d33ccd439674fa53803139923822181c87b910579827aca379
+libboost-atomic1.90.0	1.90.0-6ubuntu1	amd64	libboost-atomic1.90.0_1.90.0-6ubuntu1_amd64.deb	234590	07eed67d64072a349ab080f088d2224669fb2cbbf9779d2cb1ce20909d6e16a3
+libboost-atomic1.90-dev	1.90.0-6ubuntu1	amd64	libboost-atomic1.90-dev_1.90.0-6ubuntu1_amd64.deb	230732	abaf2dce5d16a38fa39e4a6a4a4a4876b44a221583d21d591533967e634be617
+libboost-filesystem1.90.0	1.90.0-6ubuntu1	amd64	libboost-filesystem1.90.0_1.90.0-6ubuntu1_amd64.deb	282578	3f78b71bf3bcaf465ee3010a7fd09e0374a1e3be040b4520a71466788f1fa93b
+libboost-filesystem1.90-dev	1.90.0-6ubuntu1	amd64	libboost-filesystem1.90-dev_1.90.0-6ubuntu1_amd64.deb	300644	d00a3479e52c3abaea103cfafe9149a1b17af7acfce0c0f01b9761d8429f2126

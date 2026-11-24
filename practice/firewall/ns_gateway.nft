@@ -11,11 +11,16 @@ table inet ns_fw {
 
 		iif "lo" accept
 		ct state established,related accept
+		# BodyControl request를 담은 outer ESP를 XFRM이 복호화할 수 있도록 먼저 허용한다.
+		iifname "veth_gw" ip saddr 10.10.0.10 ip daddr 10.10.0.1 ip protocol esp counter accept comment "bodycontrol_esp_received"
 
 		# SOME/IP-SD: AP의 "서비스 찾아요/구독할게요"
 		iifname "veth_gw" ip saddr 10.10.0.10 ip daddr { 10.10.0.1, 224.244.224.245 } udp sport 30490 udp dport 30490 accept
-		# SOME/IP method 요청과 DoIP 진단 연결 (TCP)
-		iifname "veth_gw" ip saddr 10.10.0.10 tcp dport { 30502, 30512, 13400 } accept
+		# VehicleState method와 DoIP 진단 연결 (TCP)
+		iifname "veth_gw" ip saddr 10.10.0.10 tcp dport { 30502, 13400 } accept
+		# BodyControl은 AP에서 온 전용 IPsec policy(reqid 1100)로 인증·보호된 flow만 허용한다.
+		iifname "veth_gw" ip saddr 10.10.0.10 tcp dport 30512 counter comment "bodycontrol_tcp_received"
+		iifname "veth_gw" ip saddr 10.10.0.10 tcp dport 30512 ipsec in reqid 1100 counter accept comment "bodycontrol_ipsec_verified"
 		# DoIP: "진단 가능한 차량 있나요?"
 		iifname "veth_gw" ip saddr 10.10.0.10 udp dport 13400 accept
 	}
@@ -25,6 +30,8 @@ table inet ns_fw {
 
 		oif "lo" accept
 		ct state established,related accept
+		# XFRM이 만든 BodyControl response outer ESP를 고정 AP peer로만 허용한다.
+		oifname "veth_gw" ip saddr 10.10.0.1 ip daddr 10.10.0.10 ip protocol esp counter accept comment "bodycontrol_esp_sent"
 
 		# SOME/IP-SD: "이런 서비스 있어요"
 		oifname "veth_gw" ip daddr { 10.10.0.10, 224.244.224.245 } udp sport 30490 udp dport 30490 accept

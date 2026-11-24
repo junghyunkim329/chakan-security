@@ -1,6 +1,6 @@
 # Adaptive Vehicle Cybersecurity SIL
 
-문서 기준일: 2026-11-17
+문서 기준일: 2026-11-24
 
 설계 기준: AUTOSAR Adaptive Platform R25-11 참고
 
@@ -73,6 +73,19 @@
 - 사용자 지시, 필수 규정·표준, 이 문서, 실제 구현 또는 시험 증거가 서로 충돌하는 경우
 
 확인을 요청할 때는 미정 항목, 지금 결정이 필요한 이유, 영향받는 작업, 현실적인 선택지와 권장안을 제시한다. 임시값, OEM 요구사항 또는 개발 편의상의 기본값을 조용히 만들어 사용하지 않는다. 미정 결정과 독립적인 작업만 계속할 수 있다.
+
+### 2.2 기준 차량과 적용 범위 (2026-11-23 사용자 확정)
+
+차량 도메인 ECU는 **Toyota RAV4 2019~2021 가솔린 모델의 공개 CAN 정보를 참고하여 만든다.** 엔진·제동·조향·변속기 등 내연기관 차량의 역할을 유지하면서 공개 통신 구현과 신호 정의를 대조할 수 있어 이 차종군을 기준으로 선택했다. Hybrid와 Prime은 이 기준에 포함하지 않는다.
+
+프로젝트 구성은 **“RAV4 가솔린의 공개 CAN 정보를 참고한 차량 도메인 + 프로젝트 자체 Adaptive/Gateway 계층”**으로 정의한다. 무료 Linux SIL, AUTOSAR Adaptive 구조 학습, CAN·LIN·Ethernet 연동 및 향후 IDPS 검증이라는 프로젝트 목표를 유지한다.
+
+- 공개 구현 근거: [commaai/opendbc Toyota 차량 정의](https://github.com/commaai/opendbc/blob/master/opendbc/car/toyota/values.py)의 `TOYOTA_RAV4_TSS2`와 [Toyota 통신 구현](https://github.com/commaai/opendbc/tree/master/opendbc/car/toyota)을 출발점으로 사용한다. 이는 커뮤니티 공개 구현이며 Toyota가 제공한 전체 OEM 사양서나 DBC로 취급하지 않는다.
+- 적용 방법: 해당 가솔린 구성에 적용됨이 확인된 CAN ID, 신호 배치, 단위, counter/checksum 및 송수신 동작을 출처와 함께 차량 도메인에 반영한다. 적용 전 공개 자료의 commit, 파일, 대상 연식·시장·구성 및 검증 근거를 고정하고 요구사항·코드·시험에 연결한다.
+- 확인 불가 항목: 전체 차체·LIN 명세, ECU 내부 권한 정책, 보안키, OEM 진단·타이밍·안전 요구사항은 공개 CAN 정보만으로 확정하지 않는다. 구체적인 연식·시장·트림·ECU/firmware 차이가 구현에 영향을 주면 §2.1에 따라 사용자 결정을 받은 뒤 적용한다.
+- 프로젝트 자체 계층: Adaptive 애플리케이션, SOME/IP 서비스, Gateway 변환, LIN 시뮬레이션과 DoIP 진단은 해당 RAV4에서의 사용이 별도로 확인되기 전까지 교육용 프로젝트 설계로 분류한다. 전체 차량 네트워크·보안 구조가 RAV4와 같다고 주장하지 않는다.
+- 현재 구현과의 관계: 이 절은 후속 구현의 기준 차량 선택을 기록한 것이며, CAN 정의·configuration·코드의 RAV4 전환을 완료했다는 뜻은 아니다. §5~§11의 기존 ID·배치·주기·주소·포트·권한·보안 통제와 합격 기준은 각 항목의 근거를 확인하고 기준서를 갱신하기 전까지 기존 프로젝트 선택값으로 유지한다. 현재 BodyControl의 UID·vSomeIP credential·IPsec 역시 RAV4의 실제 통제로 표현하지 않는다.
+- 후속 검증: CAN 정의 변경 시 codec·counter/checksum·입력 검증·ECU 주기 시험, Gateway payload·SOME/IP 연동, 진단 및 영향받는 LIN 시나리오와 IDS fixture를 재검증한다. 차종별 외부 데이터셋의 IDS 평가 결과와 이 SIL의 실행 결과를 구분하고, IDPS 추가 전후 비교는 동일한 구성·시나리오·관측 지점을 기준으로 수행한다.
 
 ## 3. 실행 환경
 
@@ -403,7 +416,22 @@ Event에는 Gateway가 검증한 최신 차량 상태, 각 신호의 validity/fr
 - UDP event port: `30511`
 - TCP method port: `30512`
 
-Method 요청은 allowlist, 범위, 차량 상태와 rate limit을 통과한 뒤에만 LIN command로 변환한다. 서비스 ID, method ID와 포트는 프로젝트 선택값이다.
+Method 요청은 아래 요청자 권한 경계, 범위, 차량 상태와 rate limit을 통과한 뒤에만 LIN command로 변환한다. 서비스 ID, method ID와 포트는 프로젝트 선택값이다.
+
+BodyControl 요청자 권한은 SOME/IP client ID로 판단하지 않는다. client ID는 request/response routing과 correlation에만 사용하며 애플리케이션 principal이 아니다. 연습 구성은 다음 계층을 모두 적용한다.
+
+- 배포가 지정한 전용 non-root `BODY_CONTROL_UID`와 `BODY_CONTROL_GID`로 BodyControl client를 실행하고 supplementary group은 모두 제거한다. 두 값은 다른 AP 프로세스의 workspace UID/GID와 달라야 한다. 숫자값은 OEM/target 배포 항목이므로 저장소 기본값을 두지 않는다. 2026-11-23 실행 편의 변경: 현재 배포에 사용자가 지정한 `vehicle-body-control` 계정의 UID와 primary GID를 setup에서 자동 조회한다. 계정이 없으면 중단하며 계정을 자동 생성하지 않는다. 명시적인 UID/GID 쌍은 기존처럼 우선 적용하고 한쪽만 지정하면 거부한다. LIN 시험은 setup이 기록한 principal을 기본으로 사용하고 명시한 값이 다르면 중단한다. 신뢰 경계와 포트·주소는 유지하며, 계정 조회·미존재·부분 지정·명시적 지정 및 기존 시험을 재검증한다.
+- 개발자 home은 전용 principal에게 열지 않는다. 시나리오 runner가 client와 workspace-local shared library만 root-owned `/run/chakan-security/body-runtime`에 설치하여 배포 이미지 경계를 모사한다.
+- vSomeIP local security의 UNIX credential 검사와 routing credential을 켜고 UDS 권한을 `0600`으로 제한한다. 실행 시 root-owned `/run/chakan-security/vsomeip`에 credential-bound 설정을 생성하여 다른 AP 프로세스가 routing manager를 대리 사용하지 못하게 한다.
+- `ns_ap` nftables는 전용 UID가 소유하고 required XFRM policy가 결합된 socket만 TCP/30512 송신을 허용한다. XFRM 변환 뒤 outer ESP에는 socket UID가 없으므로 AP→Gateway 고정 주소쌍의 ESP만 별도 송신 허용한다.
+- TCP/30512는 `ns_ap`와 `ns_gateway` 사이의 XFRM/IPsec transport policy로 보호한다. Gateway nftables는 AP→Gateway 고정 주소쌍의 outer ESP와 해당 inbound policy를 통과한 요청만 허용하며, 응답 방향 outer ESP도 Gateway→AP 고정 주소쌍으로만 송신 허용한다.
+- Gateway 애플리케이션은 UDP/30511로 들어온 method 요청을 거부하고 TCP reliable request만 처리한다. 그 뒤 payload·범위·차량 상태·rate limit·LIN 상태를 검사하며 `req->get_client()`를 권한 판단에 사용하지 않는다.
+
+연습 구성의 IPsec AEAD key는 setup 때마다 난수로 생성하여 setup process argument와 두 namespace의 kernel state에서만 일시 사용하고 파일이나 결과에 저장하지 않는다. 이는 보호된 ECU 간 transport와 principal 분리를 검증하기 위한 SIL 선택이며 OEM PKI, 장기 key provisioning/rotation, AUTOSAR IAM 또는 양산 key lifecycle을 구현했다는 주장이 아니다. 전용 UID/GID compromise, root/CAP_NET_ADMIN, Gateway namespace compromise와 LIN wire 직접 접근은 이 요청자 위협모델 밖이다. 근거는 R155 누적 Annex 5의 impersonation·M9·M10 대응, AUTOSAR SOME/IP의 routing identifier 성격, Adaptive IAM의 caller identity/policy 분리다.
+
+2026-11-23 Issue #1 검증: `docs/results/20261123-181657_lin/summary.md`와 `verdict.json`에서 38/38 통과. 전용 UID의 기존 client ID와 대체 ID 요청이 성공하고 다른 UID의 routing manager 시작 시도는 lock 권한 오류로 차단됐다. veth에는 ESP가 관찰되고 평문 TCP/30512는 관찰되지 않았다. 송신 ESP 허용 누락으로 발생했던 연결 장애도 이 실행에서 해소됐다. 실제 proxy mode와 vSomeIP을 거치지 않는 직접 socket 접근의 추가 시험은 후속 보강 대상으로 남긴다.
+
+2026-11-23 Issue #8 시험 보강 구현: 기존 lock 오류 기반 판정을 직접 TCP socket의 AP UID 방화벽 trace·counter와 실제 Proxy mode의 실행 중 routing UDS에 대한 `connect()` 권한 오류 확인으로 교체한다. Gateway의 비보호 TCP/30512와 UDP/30511 method 거부는 격리된 `ns_ap/veth_ap`의 시험 전용 root L2 주입으로 별도 확인한다. 이 주입은 비신뢰 non-root 주체의 권한이나 공격 성공을 의미하지 않는다. 실제 방화벽·XFRM 정책은 변경하지 않고 관찰용 nftrace table·proxy 설정만 만들었다가 제거하며 정책 동일성과 제거 여부를 판정에 포함한다. 정상 요청의 ESP 검사는 의도적인 평문 주입 전후 구간에서 각각 수행한다. 상세 실행·판정 기준은 `ECU/docs/evidence/issue-8-boundary-regression.md`에 기록한다. 첫 root 실행 `docs/results/20261123-235144_lin/`은 40/43 통과로 실패했다. Proxy 연결 거부 두 건은 확인했으나 시험 도구의 XFRM 텍스트 출력 JSON 해석 오류로 직접 socket·Gateway 판정과 복원 확인이 끝나지 않았다. 해당 오류를 수정한 후 사용자 root 재실행 `docs/results/20261123-235545_lin/`에서 **44/44 통과**, 상세 probe·복원 보고 10개 통과와 실제 trace·전후 정책 파일을 확인했다. 단위 테스트 18개와 CTest 16개도 통과했다. Issue #8의 SIL 시험 보강 완료 기준을 충족하며 실차 보안 검증을 주장하지 않는다.
 
 `BodyStatusChanged` payload는 network byte order로 `sequence(uint32)`, `timestamp_us(uint64)`, `door_bits(uint8)`, `window_position(uint8, 0~100)`, `light_state(uint8, 0/1)`, `status_flags(uint8)`, `freshness(uint8)`, `reserved(3-byte, 0)` 순서의 20-byte다.
 
@@ -422,7 +450,7 @@ vSomeIP을 사용해 SOME/IP message, Service Discovery, request/response와 eve
 | 항목 | 결정 | 근거 |
 | --- | --- | --- |
 | vSomeIP | 3.7.6 (commit `4187431d`, 2026-09-17). 3.8.0은 공개 5일이라 제외 | §11.1 버전 고정. 3.7 계열 최신 패치 |
-| Boost | Ubuntu 패키지 1.90.0-6ubuntu1을 `apt-get download`로 받아 `third_party/boost-root`에 압축만 풂. SHA-256은 `third_party/debs/SHA256SUMS` | 서버 시스템 패키지를 바꾸지 않기 위함 |
+| Boost | Ubuntu amd64 패키지 1.90.0-6ubuntu1. `ECU/config/dependencies/boost-debs.manifest`에 패키지명·버전·architecture·파일명·크기·SHA-256 사전 고정. 격리 staging에서 APT 다운로드 후 전체 파일 집합·digest·Debian metadata 검증, 명시 목록만 새 root에 추출하고 Linux renameat2로 원자 교체. 매 빌드마다 검증하며 기존 root 존재로 우회하지 않음 | 서버 패키지를 변경하지 않으면서 승인된 빌드 입력만 사용 |
 | 설치 위치 | `third_party/vsomeip` (작업 폴더 안, root 불필요). `scripts/setup/build-vsomeip.sh` | 같은 이유 |
 | 이번 범위 | VehicleState(0x1000)만. BodyControl(0x1100)은 LIN(Phase 6)과 함께 | BodyControl 명령은 LIN Master가 있어야 동작 |
 | 수신 검사 위치 | Gateway가 Phase 2 codec을 그대로 사용 (`CanInputValidator`). 29-bit ID·RTR·error frame은 `ERR_FRAME_FORMAT`으로 먼저 거부 | §5.1 Classical 11-bit만 사용 |
@@ -433,12 +461,16 @@ vSomeIP을 사용해 SOME/IP message, Service Discovery, request/response와 eve
 | Gateway 상태 | 모든 PDU를 한 번 이상 정상 수신 전 `Startup`, 하나라도 freshness가 FRESH가 아니거나 연속 오류 ≥ 3이면 `Degraded`, 아니면 `Running`, 종료 시 `Shutdown` | §8.1 상태 목록 |
 | payload timestamp | Gateway가 payload에 쓰인 PDU 중 가장 최근 정상 frame을 `read()`한 시각 (CLOCK_MONOTONIC, µs) | §7.2 "source timestamp" |
 | 지연 측정 | AP consumer가 event를 받은 시각 − payload timestamp. 같은 VM이라 monotonic clock 공유. "발행"까지가 아니라 "수신"까지이므로 §15.2보다 엄격 | §15.2 p99 50ms |
-| 실행 계정 | Gateway·consumer·ECU 모두 작업 폴더 주인 계정(non-root). `nobody`는 작업 폴더의 vSomeIP 라이브러리를 읽을 수 없음 | §11.1 non-root |
+| 실행 계정 | Phase 3 Gateway·VehicleState consumer·ECU는 작업 폴더 주인 계정(non-root). BodyControl은 §7.3의 별도 배포 UID/GID를 사용 | §11.1 non-root와 BodyControl 요청자 분리 |
 | vSomeIP local socket | namespace마다 다른 `network` 이름(`vsomeip-sil-gateway`, `vsomeip-sil-ap`) | namespace는 `/tmp` 파일을 공유하므로 routing manager 충돌 방지 |
 | SD initial delay | 10~100ms 범위만 설정. vSomeIP가 범위 안에서 난수로 고르며 seed 고정 불가 | §7.1 "결정적 seed"는 vSomeIP 설정으로 구현 불가 → 한계로 기록 |
 | 잘못된 요청 | 비어 있지 않은 `GetSnapshot` 요청은 `E_MALFORMED_MESSAGE`로 거부하고 security event 기록 | §7.2 |
 
 알려진 한계: CRC와 counter를 맞춘 범위 안의 위조 frame은 Gateway를 통과한다(시험 `test_forged_frame_is_accepted_known_limit`). 진위성 검증(R155 Annex 5 M10, AUTOSAR SecOC 수준)은 구현하지 않는다.
+
+2026-11-23 Issue #7 공급망 통제 변경: 실제 구현은 `ECU/scripts/setup/`에 두고 기존 루트 build 명령은 호환 진입점으로 유지한다. 신뢰 경계는 검토된 Git manifest와 host APT archive keyring이며, 빌드 사용자·host는 신뢰한다. 기존 `third_party/debs`와 추출 root를 신뢰 입력으로 재사용하지 않는다. 검증 실패 시 빌드를 중단하고 기존 root를 보존한다. archive header timestamp가 유지되므로 기존 object가 잘못 재사용되지 않도록 vSomeIP은 매번 `--clean-first`로 재컴파일한다(증분 빌드 속도 대신 입력 추적성 우선). 이는 **실차 탑재 소프트웨어의 양산 빌드·공급망 통제와의 유사성**을 위한 프로젝트 선택이며 ECU에서 APT를 실행하는 모델이 아니다.
+
+근거: 지정 R155 원문+Amendment 1~3 누적본 5.1.1(a), 7.2.2.5, 7.3.2의 공급망 정보 검증·공급자 의존성·공급자 위험 관리, KISA ISO/SAE 21434 기반 매뉴얼(2025-12-31) 3-3-2 22쪽의 오픈소스 출처·서명 검증. [AGL](https://docs.automotivelinux.org/en/master/04_Developer_Guides/02_AGL_Platform_Development/01_AGL_Yocto_Layers/01_Overview/)의 Yocto/OpenEmbedded 구조와 [Yocto](https://docs.yoctoproject.org/dev-manual/new-recipe.html#fetching-code)의 recipe 사전 checksum·분리 WORKDIR에 대응한다. 규정이 특정 SHA-256 manifest나 staging 구현을 직접 지정하는 것은 아니다. [APT](https://manpages.ubuntu.com/manpages/noble/man8/apt-secure.8.html)의 archive 인증 위에 프로젝트 승인 byte 목록을 추가한다. 양산 내부 artifact repository, OEM 승인·키 관리, SBOM 전체, 서명된 build provenance 및 완전 hermetic build는 이 SIL의 검증 범위 밖이다. R156 7.2.1.1은 배포 업데이트의 진위성·무결성 보호로서 별도 후단 통제다. 상세 통제 매핑은 `ECU/docs/evidence/boost-package-integrity.md`에 기록한다.
 
 구현: `src/gateway/`(입력 검증, state cache, payload, `vehicle_gateway`), `src/adaptive/vehicle-state/`(`vehicle_state_consumer`), `config/services/vehicle_state.yaml`, `tools/codegen/gen_services.py`, `config/vsomeip/`, 시험 `tests/unit/test_{can_input_validator,vehicle_state_cache,vehicle_state_payload}.cpp`, 통합 `scripts/run/gateway-someip-test.sh`.
 
@@ -740,7 +772,9 @@ PDU에 counter, validity와 CRC를 두고 Gateway가 freshness와 오류 상태�
 - 공격 시작 후 1초 안에 대응 IDS event 기록
 - DLT와 SQLite event가 동일 experiment ID를 보유
 
-각 실험은 `docs/results/YYYYMMDD-HHMMSS_<scenario>_<run-id>/`에 `manifest.json`, `labels.jsonl`, `ids-events.jsonl`, `summary.md`를 저장한다. packet capture와 대용량 raw log는 같은 이름으로 생성하되 Git에는 포함하지 않는다. `manifest.json`은 VM·kernel·dependency version, commit, seed, 시작·종료 시각, namespace/interface, rate·duration·frame count와 실행 명령을 포함한다. `labels.jsonl`은 ground truth 시작·종료와 attack type을 기록한다.
+각 실험은 `docs/results/YYYYMMDD-HHMMSS_<scenario>_<run-id>/`에 `manifest.json`, `labels.jsonl`, `ids-events.jsonl`, `summary.md`를 저장한다. `manifest.json`은 VM·kernel·dependency version, commit, seed, 시작·종료 시각, namespace/interface, rate·duration·frame count와 실행 명령을 포함한다. `labels.jsonl`은 ground truth 시작·종료와 attack type을 기록한다.
+
+2026-11-24 사용자 확정 보관 정책: 실행별 산출물은 `summary.md`, `verdict.json`, `report.json`, 배포 hash, packet capture와 raw log를 포함해 모두 로컬 결과 폴더에 보관하고 Git에는 포함하지 않는다. 기존 추적 파일은 로컬 원본을 유지한 채 Git 추적에서 제거한다. ECU·IDS 하위의 `docs/results/`도 같은 정책을 적용한다. 프로젝트를 받아 사용할 사람에게 필요한 재현 명령, 합격 기준, 주요 성공·실패와 한계는 `ECU/docs/evidence/` 또는 `IDS/docs/evidence/`에 선별해 정리한다. 기준서와 안내서에 나오는 과거 `docs/results/` 경로는 로컬 실행 기록의 식별자이며 새 checkout에 포함된 파일 링크를 의미하지 않는다. 완료된 내부 에이전트 작업계획과 세션 기록(`docs/superpowers/`, 각 도메인의 같은 경로, `.superpowers/`)도 로컬 전용으로 관리하고, 유지할 설계 근거는 정식 문서 경로로 옮긴다. 시험 구현·configuration·입력 fixture와 사용 안내서는 계속 버전 관리한다.
 
 50ms, 1초와 3초는 실차 제조사 요구사항이 아니라 VM에서 반복 가능한 자동 시험을 위한 프로젝트 합격 기준이다. 시험 결과에는 VM 자원, kernel, dependency version, 부하, 표본 수와 측정 명령을 기록한다.
 
