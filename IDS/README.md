@@ -20,6 +20,30 @@ CAN 데이터셋 실험의 적용 기준은 제작 기준 §3.3에 둔다. **Aut
 
 [HCRL 룰 설계 근거와 임계값 검토](docs/evidence/rule-rationale.md): 비교용 HCRL의 기존 제안과 실차 연구·ITU 지침을 정리한다. 현재 AutoHack C11 구현과 평가의 근거는 위 C11 문서를 따른다.
 
+## 사용 데이터셋·저작권·라이선스
+
+공식 출처와 이용 조건 확인일: **2026-11-25 (Asia/Seoul)**. 외부 데이터의 저작권은 원저작자에게 있으며, 이 저장소의 코드 라이선스로 데이터의 이용 조건을 대체하지 않는다.
+
+| 데이터셋 | 이 프로젝트에서 사용한 범위 | 공식 출처·이용 조건 |
+| --- | --- | --- |
+| **AutoHack** — 주 데이터셋 | 사용자 제공 `Autohack2025_Dataset.zip`의 C-CAN·P-CAN·B-CAN 자료. 학습 6,922,600 frame 중 Normal로 정책을 생성하고 시험 2,711,497 frame으로 IDS를 평가 | [국민대학교 MOSE 공식 배포 안내](https://cms.kookmin.ac.kr/mose/AutoHackDataset.do), [배포 DOI: 10.5281/zenodo.20321379](https://doi.org/10.5281/zenodo.20321379). **공식 배포 안내에 CC BY 4.0 명시** |
+| **HCRL Car-Hacking** — 비교 자료 | DoS·Fuzzy·RPM/gear Spoofing CSV와 정상 주행 로그의 파일·품질 분석. 현재 C11 IDS의 정책 생성·성능 평가에는 사용하지 않음 | [HCRL 공식 배포 안내](https://sites.google.com/hksecurity.net/hcrl/Datasets/car-hacking-dataset). **학술 목적 공개·논문 인용 요청**. 확인한 공식 페이지에는 별도 표준 라이선스가 명시돼 있지 않아 CC BY 등으로 임의 표기하지 않음 |
+
+AutoHack의 [CC BY 4.0 조건](https://creativecommons.org/licenses/by/4.0/)에 따라 제작자·출처·라이선스 링크와 처리 내역을 표시한다. 원본 ZIP·CSV와 원본 라벨은 수정하지 않았으며, 정상 프로파일·통계·IDS 평가 결과를 별도로 산출했다. UDS 세부 라벨은 원문을 보존하고 통계 표시에서만 하나의 범주로 묶었다. 이 프로젝트를 데이터 제공기관이 보증하거나 승인했다는 뜻은 아니다.
+
+실제 사용한 AutoHack ZIP의 내부 README는 DOI `10.5281/zenodo.19661007`을 연결한다. 위 현재 배포 DOI와 같은 판이라고 단정하지 않으며, 사용 파일은 SHA-256과 내부 파일명으로 고정했다. 판 식별과 전체 처리 내역은 [AutoHack 원본 분석](docs/evidence/autohack-file-profile.md), HCRL 입력 식별은 [HCRL 원본 분석](docs/evidence/hcrl-file-profile.md)을 따른다.
+
+### 제작자·인용 문헌
+
+- **AutoHack**: Yuchan Song, Sejun Ahn, Seungjin Baek, Hyeonseong Kim, Huy Kang Kim, Sanghoon Jeon. [AutoHack 논문·서지 정보](https://www.usenix.org/conference/vehiclesec26/presentation/song), VehicleSec 2026, pp. 237–252. 공식 배포 안내는 국민대학교 Mobility Cybersecurity Lab(MOSE)에서 제공한다.
+- **HCRL Car-Hacking**: [제공기관이 지정한 인용 문헌](https://sites.google.com/hksecurity.net/hcrl/Datasets/car-hacking-dataset)은 Song, Woo & Kim (2020), *Vehicular Communications* 21, 100198 및 Seo, Song & Kim (2018), *GIDS*, PST 2018이다.
+
+ROAD는 [논문](https://doi.org/10.1371/journal.pone.0296879)을 통한 탐지 한계 검토에만 참고했다. ROAD 원본 데이터는 이번 분석·정책 생성·평가에 사용하지 않았다.
+
+### 원본 데이터는 GitHub에 포함하지 않음
+
+사용한 데이터셋 ZIP·CSV·정상 주행 로그와 실행별 정책·이벤트·결과는 로컬 `IDS/docs/results/`에만 보관하고 `.gitignore`로 제외한다. 저장소에는 구현·테스트·재현 명령과 선별한 분석 근거를 남긴다. 원본은 위 공식 출처에서 별도로 확보해야 한다. 이 보관 방침은 원저작자의 라이선스 조건을 변경하지 않는다.
+
 ## 빌드·실행
 
 저장소 루트에서 실행한다. C11 compiler·CMake·Python 3이 필요하며 Python 실행부는 표준 라이브러리만 사용한다. 테스트에는 pytest를 사용한다.
