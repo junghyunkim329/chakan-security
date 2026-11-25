@@ -1,4 +1,4 @@
-"""C11 ABI adapter; Python owns parsing, truth, policy validation and logs."""
+"""Historical FFI reference for tests/benchmarks; not the IDS execution path."""
 import ctypes as ct
 from pathlib import Path
 import shutil

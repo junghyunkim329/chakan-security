@@ -35,6 +35,10 @@ typedef struct {
 } canids_finding;
 
 typedef struct canids_detector canids_detector;
+typedef struct {
+    uint64_t initial_capacity_slots, capacity_slots, window_grows, largest_active_id_window;
+} canids_stats;
+int canids_get_stats(const canids_detector *detector,canids_stats *stats);
 
 uint32_t canids_abi_version(void);
 size_t canids_frame_size(void);

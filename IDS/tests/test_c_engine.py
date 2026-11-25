@@ -66,20 +66,10 @@ def test_c_time_regression_is_error_and_future_processing_remains_valid(c_librar
         assert d.observe(Frame('C-CAN',10,0x100,2,b'00'))[0]['observed']==0
 
 
-def test_c_cli_is_default_and_records_library_identity(c_library,tmp_path):
-    import json,sys
-    p=tmp_path/'policy.json';p.write_text(json.dumps(policy()))
-    source=tmp_path/'data.csv'
-    source.write_text('Interface,Timestamp,Arbitration_ID,DLC,Data,Label\nC-CAN,0,777,2,00 00,DoS\n')
-    out=tmp_path/'run'
-    cmd=[sys.executable,'-m','IDS.canids','evaluate','--input',str(source),'--policy',str(p),
-         '--library',str(c_library),'--output-dir',str(out)]
-    result=subprocess.run(cmd,cwd=ROOT.parent,capture_output=True,text=True,timeout=20)
-    assert result.returncode==0,result.stderr
-    m=json.loads((out/'manifest.json').read_text())
-    assert m['backend']['backend']=='c11'
-    assert m['backend']['library_sha256']==CDetector(policy(),c_library).backend_info['library_sha256']
-    assert json.loads((out/'report.json').read_text())['metrics']['binary']['tp']==1
+def test_reference_adapter_binds_actual_library_bytes(c_library):
+    import hashlib
+    with CDetector(policy(),c_library) as d:
+        assert d.backend_info['library_sha256']==hashlib.sha256(c_library.read_bytes()).hexdigest()
 
 
 def test_replaced_library_path_cannot_reuse_cached_old_abi(c_library,tmp_path):

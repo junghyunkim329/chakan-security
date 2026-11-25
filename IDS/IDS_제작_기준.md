@@ -4,7 +4,7 @@
 
 대상: Phase 7 공격·IDS 담당자
 
-상태: CAN A1~A8의 목표 기준과 데이터셋·대시보드·IDPS 확장 방향을 정리한다. 외부 AutoHack용 C11 코어와 Python 분석·평가 도구 v1을 구현하고 네 규칙의 파일 평가를 완료했다. 전체 SIL 시나리오·native SocketCAN 수집·가상 CAN 재생·대시보드·IDPS는 후속 범위다.
+상태: CAN A1~A8의 목표 기준과 데이터셋·대시보드·IDPS 확장 방향을 정리한다. 외부 AutoHack용 독립 C11 파일 IDS와 외부 Python 분석·평가 도구를 구현했다. 기존 네 규칙과 정책 수치를 유지하며 현재 실행 구조는 [독립 C 구현](docs/evidence/native-c-ids.md)을 따른다. 전체 SIL 시나리오·native SocketCAN 수집·가상 CAN 재생·대시보드·IDPS는 후속 범위다.
 
 ## 1. 목적과 적용 범위
 
@@ -30,7 +30,7 @@ IDS는 이상을 탐지하고 기록하며, **대시보드 연동과 향후 IDPS
 | [tools/sil_can/codec.py](../tools/sil_can/codec.py) | `unpack`, `check_values`, `CounterChecker`, CRC 계산 | 기존 검사 의미와 오류 종류를 재사용·대조 |
 | [ECU/src/gateway/can_input_validator.cpp](../ECU/src/gateway/can_input_validator.cpp) | frame 형식과 검사 순서 | ECU/Gateway와 IDS 판정의 일관성 확인 |
 
-`project.md` §11.2의 SIL 정책 원본 계획은 `config/security-policy.yaml`이며 이 파일은 아직 없다. 외부 AutoHack v1 실행 코드는 `IDS/src/`의 C11 코어와 `IDS/canids/`의 Python 도구에 있다. 데이터셋 정책은 `fit`이 만드는 출처·산출식·hash를 가진 JSON 버전 1이며 실행별 로컬 결과에 보관한다. [구현·계약·평가](docs/evidence/autohack-rule-ids.md)를 따른다. 이 문서가 실행 가능한 정책 파일을 대신하지 않는다.
+`project.md` §11.2의 SIL 정책 원본 계획은 `config/security-policy.yaml`이며 이 파일은 아직 없다. 외부 AutoHack 실행은 `IDS/src/`의 독립 C 프로그램이 정책 로딩·ZIP/CSV 입력·탐지·이벤트 기록을 담당한다. `IDS/canids/`의 Python 도구는 정책 생성과 완료된 C 실행의 외부 사후 평가에 사용한다. 데이터셋 정책은 `fit`이 만드는 출처·산출식·hash를 가진 JSON 버전 1이며 실행별 로컬 결과에 보관한다. [구현·계약·평가](docs/evidence/autohack-rule-ids.md)를 따른다. 이 문서가 실행 가능한 정책 파일을 대신하지 않는다.
 
 ## 3. 입력과 관측 기준
 

@@ -1,4 +1,4 @@
-"""Passive rule evaluation. No truth labels, signal layouts or transmit API."""
+"""Python reference oracle for tests; production detection runs in native C."""
 from collections import deque
 
 from .model import Frame

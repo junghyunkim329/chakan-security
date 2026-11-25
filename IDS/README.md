@@ -1,10 +1,10 @@
 # IDS
 
-Phase 7 작업 위치. **C11 탐지 코어 + Python 데이터 분석·정책 생성·평가**로 구성한 파일 기반 IDS v1을 구현했다. AutoHack이 주 데이터셋이다.
+Phase 7 작업 위치. **독립 C11 실행 프로그램 + 외부 Python 분석 도구**로 구성한 파일 기반 IDS를 구현했다. AutoHack이 주 데이터셋이다.
 
 CAN A1~A8의 탐지 조건, 기대 이벤트, 시험·기록 기준과 구현 전 미정 항목은 [CAN IDS 제작 기준](IDS_제작_기준.md)에 정리한다.
 
-대시보드 연동과 향후 IDPS 확장 방향은 제작 기준 §6.1~6.2에 포함한다. 현재 구현은 네 가지 프로파일 이상 규칙과 이벤트·평가 도구다. native SocketCAN 수집·대시보드·예방 기능은 후속 범위다.
+대시보드 연동과 향후 IDPS 확장 방향은 제작 기준 §6.1~6.2에 포함한다. C가 정책 검증·ZIP/CSV 입력·네 가지 프로파일 이상 규칙·이벤트 기록을 직접 수행한다. Python은 정상 프로파일 생성과 완료된 C 실행의 사후 평가를 담당한다. native SocketCAN 수집·대시보드·예방 기능은 후속 범위다.
 
 CAN 데이터셋 실험의 적용 기준은 제작 기준 §3.3에 둔다. **AutoHack을 제작·평가의 주 데이터셋으로 사용하고, HCRL은 먼저 분석한 비교 자료로 사용한다.** 파일 분석으로 IDS를 검증한 뒤 가상 CAN 재생으로 연동을 확인한다. ROAD는 한계 분석 근거로 사용한다. 외부 차량 데이터에 기존 SIL의 ID·CRC·counter 정의를 자동 적용하지 않는다.
 
@@ -12,7 +12,9 @@ CAN 데이터셋 실험의 적용 기준은 제작 기준 §3.3에 둔다. **Aut
 
 [공격 시나리오별 탐지 범위](docs/evidence/attack-scenario-coverage.md): `project.md`와 AutoHack 논문을 기준으로 A1~D2의 규칙화 가능 조건, 데이터 적용 한계와 미정 사항을 구분한다.
 
-[C11 규칙 IDS 구현·근거·실제 평가](docs/evidence/autohack-rule-ids.md): 306개 정상 프로파일, 네 규칙의 출처·산출식, 전체 AutoHack 시험 결과, C/Python 이벤트 전수 일치와 검증 범위를 정리한다. 경보율·오탐·미탐과 미구현 시나리오를 함께 기록한다.
+[독립 C 실행 구조·성능 검증](docs/evidence/native-c-ids.md): Python 없는 실행 경로, 입력·로그 계약, 메모리 재사용, 기존 FFI 방식과 비교 방법 및 한계를 정리한다.
+
+[C11 규칙 IDS 구현·근거·실제 평가](docs/evidence/autohack-rule-ids.md): 이전 Python/FFI 실행 단계의 306개 정상 프로파일, 네 규칙의 출처·산출식과 전체 AutoHack 시험 결과를 정리한다. 경보율·오탐·미탐과 미구현 시나리오를 함께 기록한다.
 
 [AutoHack 원본 파일 분석 결과](docs/evidence/autohack-file-profile.md): 9,634,097 frame과 모든 CSV 표현의 대응·ZIP CRC를 검증했다. `Interface` 표현의 UDS 세부 라벨, 정상 DLC 2~8, 학습 정상 목록에 없는 시험 정상 321 frame, 버스별 수집 공백과 재생률 제한을 정리했다. 후속 정책 산출과 IDS 파일 평가는 위 C11 문서에 연결한다. CAN 재생은 아직 수행하지 않았다.
 
@@ -46,37 +48,64 @@ ROAD는 [논문](https://doi.org/10.1371/journal.pone.0296879)을 통한 탐지 
 
 ## 빌드·실행
 
-저장소 루트에서 실행한다. C11 compiler·CMake·Python 3이 필요하며 Python 실행부는 표준 라이브러리만 사용한다. 테스트에는 pytest를 사용한다.
+저장소 루트에서 실행한다. C 실행 프로그램은 Python이나 `libcanids.so`를 호출하지 않고 탐지 코어를 직접 링크한다. native 의존성은 json-c·libarchive·OpenSSL Crypto다. Python 3 표준 라이브러리는 외부 프로파일 생성·평가에만 필요하며 pytest는 개발 테스트에 사용한다.
 
 ```bash
+sudo apt-get install -y build-essential cmake pkg-config libjson-c-dev libarchive-dev libssl-dev
 cmake -S IDS -B IDS/build -DCMAKE_BUILD_TYPE=Release
 cmake --build IDS/build
 ctest --test-dir IDS/build --output-on-failure
 python3 -m pytest -q IDS/tests
 ```
 
-원본 ZIP을 준비한 뒤 다음 `/path/to/Autohack2025_Dataset.zip`을 실제 경로로 바꾼다. 원본·실행별 policy/result와 build는 Git에 포함되지 않는다. output은 새 경로를 사용해야 한다.
+원본 ZIP을 별도로 준비하고 `/path/to/Autohack2025_Dataset.zip`을 실제 경로로 바꾼다. policy와 결과 경로는 새 경로여야 한다. 아래 세 단계는 별도 프로세스이며, 이미 고정 정책이 있으면 C 탐지 실행에 Python이 필요하지 않다.
+
+**1. 외부 Python 도구로 학습 Normal 기준 정책 생성**
 
 ```bash
 python3 -m IDS.canids fit \
   --input /path/to/Autohack2025_Dataset.zip \
   --member Autohack2025_Dataset/Interface/train/autohack_train_both_interface.csv \
   --output IDS/docs/results/demo/policy.json
+```
 
-python3 -m IDS.canids evaluate \
+**2. 독립 C 프로그램으로 탐지**
+
+```bash
+./IDS/build/canids \
   --input /path/to/Autohack2025_Dataset.zip \
   --member Autohack2025_Dataset/Interface/test/autohack_test_both_interface.csv \
   --policy IDS/docs/results/demo/policy.json \
-  --output-dir IDS/docs/results/demo/test
+  --output-dir IDS/docs/results/demo/native
 ```
 
-`evaluate`는 기본적으로 C11 코어를 사용한다. `--backend python`은 대조용 기준 구현이며, `--library`로 별도 C library를 지정할 수 있다. 라벨 없는 `Interface,Timestamp,Arbitration_ID,DLC,Data` CSV는 `detect --input PATH --policy POLICY --output-dir NEW_DIRECTORY`로 처리한다. ZIP에는 `--member`가 필요하다. fit/evaluate는 Label이 함께 있는 `both_interface.csv`를 사용한다.
+**3. 외부 Python 도구로 C 이벤트와 정답을 비교**
 
-결과 폴더에는 `manifest.json`, `report.json`, `ids-events.jsonl`, `summary.md`가 생성된다. `manifest.status=complete`인 실행을 평가 결과로 사용한다. 이벤트에는 공격 정답을 넣지 않고 rule·원본 위치·관측값·threshold·policy·experiment ID를 기록한다. `warning`·`log_only`는 이상 관측 상태이며 차단 명령이 아니다.
+```bash
+python3 -m IDS.canids evaluate \
+  --run-dir IDS/docs/results/demo/native \
+  --input /path/to/Autohack2025_Dataset.zip \
+  --member Autohack2025_Dataset/Interface/test/autohack_test_both_interface.csv \
+  --policy IDS/docs/results/demo/policy.json \
+  --output-dir IDS/docs/results/demo/analysis
+```
 
-## C API
+C 입력은 `Interface,Timestamp,Arbitration_ID,DLC,Data` 또는 마지막에 `Label`이 있는 CSV다. ZIP에는 정확한 `--member`를 지정한다. C는 Label을 판정에 사용하지 않는다. 외부 `fit`·`evaluate`는 Label이 함께 있는 `both_interface.csv`를 사용한다.
 
-[canids.h](include/canids.h)의 `canids_create` → `canids_observe` → `canids_destroy`를 사용한다. 프로파일은 복사되며 frame에 라벨을 넣지 않는다. bus는 C/P/B 순서의 0/1/2이고 timestamp는 공통 시계의 비감소 int64 microsecond다. 출력 배열은 최대 네 finding을 수용해야 하며 오류는 반환값으로 처리한다. native 수집기 연결 전까지 파일 검증에는 Python adapter를 사용한다.
+| 결과 폴더 | 산출물·확인 항목 |
+| --- | --- |
+| C `native/` | `manifest.json`, `runtime.json`, `ids-events.jsonl`, `summary.md`. frame/event 수, CPU·RSS·처리량, window 저장 공간 증가, 로그 기록 지연·write 실패·pending 건수 |
+| Python `analysis/` | 별도 `manifest.json`, `report.json`, `summary.md`. 완료된 C 산출물과 원본 hash·event 위치를 검증한 후 frame별 오탐·미탐 계산 |
+
+`manifest.status=complete`인 결과만 사용한다. 실행 폴더 생성 뒤의 입력 오류·중단·기록 실패는 실패/중단 manifest와 부분 기록을 남긴다. 초기 정책 검증이나 기존 출력 경로 때문에 시작을 거부하면 stderr와 실패 종료 코드로 알린다. 이벤트의 `warning`·`log_only`는 이상 관측 상태이며 차단 명령이 아니다. Python의 기존 `detect`, `--backend`, `--library` 실행 옵션은 제거했다. `engine.py`와 `c_engine.py`는 테스트·이전 방식 비교용으로만 남긴다.
+
+## C API와 메모리·로그 경계
+
+[canids.h](include/canids.h)의 `canids_create` → `canids_observe` → `canids_destroy`를 C 실행 파일이 직접 사용한다. 프로파일은 복사되며 frame에 라벨을 넣지 않는다. bus는 C/P/B 순서의 0/1/2이고 timestamp는 공통 시계의 비감소 int64 microsecond다. 버스·11-bit ID로 상태에 바로 접근한다.
+
+입력·이벤트 버퍼와 per-ID window 저장 공간을 재사용한다. window 초기 용량은 학습 Normal 최대 1초 관측 횟수이며, 공격 부하가 넘으면 공간 증가와 peak를 기록한다. 부족한 메모리나 파일 쓰기 오류를 조용한 유실로 처리하지 않는다. 고정 메모리 또는 hard real-time 보장은 아니다.
+
+단일 스레드에서 로컬 파일로 버퍼를 비우며 화면·네트워크 전송은 실행 경로에 없다. buffer가 차면 파일 backpressure가 생긴다. 기록 지연은 process의 record 읽기 시작부터 batch의 kernel write 완료까지이며, 디스크 영구 저장·실제 SocketCAN 수신·공격 시작 후 지연과 구분한다. 현재 파일 경로에는 주기적 flush deadline이 없으며 SocketCAN 연동 전에 별도 검증이 필요하다.
 
 ## 쓸 수 있는 공통 자원 (프로젝트 루트)
 

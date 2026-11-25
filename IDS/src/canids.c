@@ -22,6 +22,7 @@ struct canids_detector {
     bool have_time;
     int64_t last_time;
     uint64_t window_us;
+    canids_stats stats;
 };
 
 uint32_t canids_abi_version(void) { return 1; }
@@ -50,7 +51,15 @@ canids_detector *canids_create(const canids_profile *profiles, size_t count, uin
         entry *e=&d->entries[(size_t)p->bus*CANIDS_ID_COUNT+p->can_id];
         if (e->present) { canids_destroy(d); return NULL; }
         e->present=true; e->policy=*p;
+        if (p->max_count_1s>SIZE_MAX/sizeof(*e->window.times)) {
+            canids_destroy(d); if (error) *error=CANIDS_NO_MEMORY; return NULL;
+        }
+        e->window.times=malloc((size_t)p->max_count_1s*sizeof(*e->window.times));
+        if (!e->window.times) { canids_destroy(d); if (error) *error=CANIDS_NO_MEMORY; return NULL; }
+        e->window.capacity=(size_t)p->max_count_1s;
+        d->stats.capacity_slots+=p->max_count_1s;
     }
+    d->stats.initial_capacity_slots=d->stats.capacity_slots;
     if (error!=NULL) *error=CANIDS_OK;
     return d;
 }
@@ -89,8 +98,10 @@ int canids_observe(canids_detector *d,const canids_frame *f,canids_finding *out,
     while (q->count && q->times[q->head]<=cutoff) {
         q->head=(q->head+1)%q->capacity; --q->count;
     }
+    size_t before=q->capacity;
     int status=reserve_one(q);
     if (status!=CANIDS_OK) return status;
+    if (q->capacity!=before) { ++d->stats.window_grows; d->stats.capacity_slots+=q->capacity-before; }
     d->have_time=true; d->last_time=f->timestamp_us;
     if ((e->policy.allowed_dlcs & (uint16_t)(1u<<f->dlc))==0)
         add(out,n,CANIDS_DLC_UNSEEN,f->dlc,e->policy.allowed_dlcs);
@@ -101,7 +112,13 @@ int canids_observe(canids_detector *d,const canids_frame *f,canids_finding *out,
     }
     e->previous=f->timestamp_us; e->have_previous=true;
     q->times[(q->head+q->count)%q->capacity]=f->timestamp_us; ++q->count;
+    if (q->count>d->stats.largest_active_id_window) d->stats.largest_active_id_window=q->count;
     if (q->count>e->policy.max_count_1s)
         add(out,n,CANIDS_RATE_HIGH,(uint64_t)q->count,e->policy.max_count_1s);
     return CANIDS_OK;
+}
+
+int canids_get_stats(const canids_detector *d,canids_stats *stats) {
+    if (!d || !stats) return CANIDS_INVALID_ARGUMENT;
+    *stats=d->stats; return CANIDS_OK;
 }

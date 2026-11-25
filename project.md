@@ -1,6 +1,6 @@
 # Adaptive Vehicle Cybersecurity SIL
 
-문서 기준일: 2026-11-24
+문서 기준일: 2026-11-25
 
 설계 기준: AUTOSAR Adaptive Platform R25-11 참고
 
@@ -117,7 +117,7 @@ Ubuntu 공식 최소 사양보다 여유 있게 잡은 이유는 vSomeIP 빌드,
 
 - Adaptive 애플리케이션과 Gateway: C++20
 - CAN ECU 제어 코어와 PDU codec: C11
-- IDS 탐지 코어: C11. 2026-11-24 사용자 확정에 따라 정상 프로파일 생성·파일 입력·평가·로그 처리는 Python에 두고, 라벨 없는 frame의 판정과 시간/window 상태는 재사용 가능한 C API로 분리한다. Python 탐지 구현은 판정 대조용 기준 구현으로 유지한다. 실제 SocketCAN 수집·대시보드·IDPS 차단 연결은 후속 범위다.
+- IDS 실행 프로그램: C11. 2026-11-25 사용자 확정에 따라 정책 로딩·파일 입력·탐지·버퍼링한 이벤트 기록은 Python 없이 독립 C 프로세스가 담당한다. Python은 정상 프로파일 생성과 완료된 C 실행의 사후 평가·분석에만 사용한다. Python 탐지·FFI 구현은 대조용으로만 유지하며 실행 경로에서 제외한다. 실제 SocketCAN 수집·대시보드·IDPS 차단 연결은 후속 범위다.
 - 시험 시나리오, 공격 도구, 결과 분석과 대시보드 API: Python 3
 - 빌드: CMake
 - C/C++ 단위 시험: CTest
@@ -688,6 +688,12 @@ HCRL 출처는 https://sites.google.com/hksecurity.net/hcrl/Datasets/car-hacking
 - configuration schema 검증
 
 ### 11.2 IDS 규칙
+
+2026-11-25 사용자 변경 지시: **IDS 실행 전체를 독립 C 프로그램으로 만들고 Python은 외부 분석 도구로 분리한다.** 기존 네 규칙·정책 JSON v1·관측값·시간 경계를 유지하면서 C가 ZIP/CSV 입력·정책 검증·탐지·이벤트 기록을 직접 수행한다. 버스·ID 직접 인덱스와 재사용 버퍼를 사용하고, per-ID window의 초기 저장 공간은 학습 정상 최대 관측 횟수로 준비한다. 공격 부하가 이를 넘으면 저장 공간 증가와 최대 사용량을 기록하며, 메모리 부족·기록 실패·중단을 조용한 frame/event 유실로 처리하지 않는다. 이는 OEM 한도나 고정 메모리·hard real-time 보장이 아니다.
+
+첫 실행 경로는 현재 AutoHack 파일 실습이며 C11·json-c·libarchive·OpenSSL EVP를 사용한다. 단일 스레드에서 버퍼가 차면 로컬 파일에 기록하는 backpressure 방식이고 화면·네트워크 전송을 기다리지 않는다. 기록 지연은 process read부터 batch flush의 kernel write 완료까지 측정하며 디스크 영구 저장이나 live CAN 수신 지연과 구분한다. 수집기·인터페이스/버스 매핑이 필요한 SocketCAN, 대시보드·예방 권한은 기존 후속 범위를 유지한다. 같은 원본·고정 정책·전체 이벤트 조건에서 기존 Python/FFI 방식과 처리량·CPU·최대 RSS·기록 지연·frame 수를 대조하고 성능 개선 여부를 측정값으로 보고한다. 이후 2026-11-24 문단은 이전 구현·평가의 이력이다.
+
+2026-11-25 독립 C 파일 IDS 검증: 원래 AutoHack 시험 2,711,497 frame·254,885개 event의 관측값이 기존 기준과 전수 일치했고 TP 144,840·FP 62,583·TN 2,494,597·FN 9,477을 유지했다. 동일한 전체 JSONL 기록 조건의 3회 교대 측정에서 process wall 중앙값은 Python/FFI 19.111초→C 2.895초, CPU 중앙값 19.09초→2.88초, 최대 RSS 31,448→10,204 KiB였다. 이는 해당 VM의 파일·cache·로컬 기록 조건이며 live CAN 또는 WCET 보장이 아니다. 테스트 77개, native CTest와 ASan·UBSan·LeakSanitizer를 통과했다. 실행 계약·메모리 증가·기록 지연·측정 경계와 독립 검토 결과는 `IDS/docs/evidence/native-c-ids.md`를 따른다.
 
 2026-11-24 사용자 구현 시작 지시에 따라 외부 AutoHack 파일 IDS의 첫 실험 기준은 `IDS/` 안에서 구현한다. 학습 `Normal` 행으로 버스·ID별 ID/DLC 관측 집합, 같은 ID의 연속 관측 두 frame이 모두 Normal일 때의 최소 간격, `(t-1초,t]`의 Normal 최대 횟수를 산출해 고정한다. 탐지는 라벨 없는 Frame으로 수행하며 최소 간격 미만·최대 횟수 초과를 기록한다. 이 정상 관측 경계 방식은 초기 프로젝트 실험 정책이며 OEM 요구사항이나 전 공격 탐지 보장이 아니다. 시험 자료로 수치를 재조정하지 않는다. 외부 데이터용 정책은 출처·수치 산출 방식·hash를 포함한 버전 1 JSON으로 보관하고 실제 값은 로컬 실행 결과에 둔다. 기존 `config/security-policy.yaml` 계획은 SIL 프로파일용으로 구분한다. 이벤트 버전 1은 이상 관측의 `warning`·`log_only` 상태이며 차량 위험 등급이나 차단 명령이 아니다. API·대시보드·IDPS 권한은 별도 범위로 유지한다.
 
